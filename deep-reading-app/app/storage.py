@@ -3,7 +3,7 @@ Persistence layer, backed by SQLite (built into Python — no extra install,
 no external service, still free).
 
 Three tables:
-  articles      - one row per piece you've read
+  articles      - one row per piece you've read (now includes its category)
   questions     - the Socratic questions + your answers, linked to an article
   review_state  - the SM-2 spaced-repetition schedule for each article
 
@@ -65,6 +65,16 @@ def init_db():
         );
         """
     )
+
+    # 'category' was added after the table already existed for some people —
+    # ALTER TABLE ADD COLUMN is how you add a column to an existing SQLite
+    # table. If it's already there (fresh installs), SQLite raises an error
+    # which we just ignore.
+    try:
+        conn.execute("ALTER TABLE articles ADD COLUMN category TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     conn.commit()
     conn.close()
 
@@ -86,14 +96,15 @@ def _migrate_old_json_if_present():
     conn = _connect()
     for entry in old_entries:
         cursor = conn.execute(
-            "INSERT INTO articles (title, summary, url, source, date_saved) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO articles (title, summary, url, source, date_saved, category) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
             (
                 entry.get("title", ""),
                 entry.get("summary", ""),
                 entry.get("url", ""),
                 entry.get("source", ""),
                 datetime.utcnow().isoformat(),
+                None,
             ),
         )
         article_id = cursor.lastrowid
@@ -129,17 +140,24 @@ def _migrate_old_json_if_present():
     print(f"Imported {len(old_entries)} old entries into the database.")
 
 
-def save_entry(piece: dict, questions: list[str], answers: list[str], review_state) -> None:
+def save_entry(
+    piece: dict,
+    questions: list[str],
+    answers: list[str],
+    review_state,
+    category: str = None,
+) -> None:
     conn = _connect()
     cursor = conn.execute(
-        "INSERT INTO articles (title, summary, url, source, date_saved) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO articles (title, summary, url, source, date_saved, category) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
         (
             piece["title"],
             piece["summary"],
             piece["url"],
             piece["source"],
             datetime.utcnow().isoformat(),
+            category,
         ),
     )
     article_id = cursor.lastrowid
@@ -185,6 +203,49 @@ def load_all() -> list[dict]:
                 "url": article["url"],
                 "source": article["source"],
                 "date_saved": article["date_saved"],
+                "category": article["category"],
+                "questions": [
+                    {"question": q["question_text"], "answer": q["answer_text"]}
+                    for q in questions
+                ],
+            }
+        )
+
+    conn.close()
+    return result
+
+
+def get_library(category: str = None) -> list[dict]:
+    """
+    Everything saved, optionally filtered to one category, newest first —
+    each article includes its questions/answers for the Library page.
+    """
+    conn = _connect()
+    if category:
+        articles = conn.execute(
+            "SELECT * FROM articles WHERE category = ? ORDER BY date_saved DESC",
+            (category,),
+        ).fetchall()
+    else:
+        articles = conn.execute(
+            "SELECT * FROM articles ORDER BY date_saved DESC"
+        ).fetchall()
+
+    result = []
+    for article in articles:
+        questions = conn.execute(
+            "SELECT question_text, answer_text FROM questions WHERE article_id = ?",
+            (article["id"],),
+        ).fetchall()
+        result.append(
+            {
+                "id": article["id"],
+                "title": article["title"],
+                "summary": article["summary"],
+                "url": article["url"],
+                "source": article["source"],
+                "date_saved": article["date_saved"],
+                "category": article["category"],
                 "questions": [
                     {"question": q["question_text"], "answer": q["answer_text"]}
                     for q in questions
@@ -235,13 +296,11 @@ def get_streak() -> int:
     rows = conn.execute("SELECT date_saved FROM articles").fetchall()
     conn.close()
 
-    # Reduce each timestamp down to just its date (YYYY-MM-DD)
     saved_dates = {row["date_saved"][:10] for row in rows}
     if not saved_dates:
         return 0
 
     today = datetime.utcnow().date()
-    # If nothing saved today yet, the streak can still count from yesterday
     if today.isoformat() in saved_dates:
         cursor_date = today
     elif (today - timedelta(days=1)).isoformat() in saved_dates:

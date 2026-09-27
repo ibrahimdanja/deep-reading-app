@@ -11,7 +11,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.content import CATEGORIES, get_piece
-from app.storage import init_db, save_entry, get_recent, get_streak, get_due_reviews
+from app.storage import (
+    init_db,
+    save_entry,
+    get_recent,
+    get_streak,
+    get_due_reviews,
+    get_library,
+)
 from app.questions import generate_questions
 from app.spaced_rep import ReviewState
 
@@ -32,6 +39,7 @@ class AnswerPayload(BaseModel):
     summary: str
     url: str
     source: str
+    category: str
     questions: list[str]
     answers: list[str]
 
@@ -48,6 +56,11 @@ def api_get_home():
         "due_count": len(get_due_reviews()),
         "recent": get_recent(5),
     }
+
+
+@app.get("/api/library")
+def api_get_library(category: str | None = None):
+    return get_library(category)
 
 
 @app.get("/api/piece")
@@ -70,6 +83,7 @@ def api_save_answer(payload: AnswerPayload):
         questions=payload.questions,
         answers=payload.answers,
         review_state=review_state,
+        category=payload.category,
     )
     return {"status": "saved"}
 
