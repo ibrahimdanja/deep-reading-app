@@ -16,7 +16,7 @@ import json
 import os
 import sqlite3
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "deep_reading.db")
 OLD_JSON_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "reviews.json")
@@ -212,3 +212,46 @@ def get_due_reviews() -> list[dict]:
     ).fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+def get_recent(limit: int = 5) -> list[dict]:
+    """The most recently saved articles, for the Home screen."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT id, title, source, date_saved FROM articles "
+        "ORDER BY date_saved DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def get_streak() -> int:
+    """
+    How many days in a row (up to and including today or yesterday) have at
+    least one saved article. A simple day-counting streak, nothing fancier.
+    """
+    conn = _connect()
+    rows = conn.execute("SELECT date_saved FROM articles").fetchall()
+    conn.close()
+
+    # Reduce each timestamp down to just its date (YYYY-MM-DD)
+    saved_dates = {row["date_saved"][:10] for row in rows}
+    if not saved_dates:
+        return 0
+
+    today = datetime.utcnow().date()
+    # If nothing saved today yet, the streak can still count from yesterday
+    if today.isoformat() in saved_dates:
+        cursor_date = today
+    elif (today - timedelta(days=1)).isoformat() in saved_dates:
+        cursor_date = today - timedelta(days=1)
+    else:
+        return 0
+
+    streak = 0
+    while cursor_date.isoformat() in saved_dates:
+        streak += 1
+        cursor_date = cursor_date - timedelta(days=1)
+
+    return streak

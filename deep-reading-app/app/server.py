@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.content import CATEGORIES, get_piece
-from app.storage import init_db, save_entry
+from app.storage import init_db, save_entry, get_recent, get_streak, get_due_reviews
 from app.questions import generate_questions
 from app.spaced_rep import ReviewState
 
@@ -39,6 +39,15 @@ class AnswerPayload(BaseModel):
 @app.get("/api/categories")
 def api_get_categories():
     return CATEGORIES
+
+
+@app.get("/api/home")
+def api_get_home():
+    return {
+        "streak": get_streak(),
+        "due_count": len(get_due_reviews()),
+        "recent": get_recent(5),
+    }
 
 
 @app.get("/api/piece")
