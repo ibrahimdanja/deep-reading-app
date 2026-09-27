@@ -11,13 +11,20 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.content import CATEGORIES, get_piece
+from app.storage import init_db, save_entry
 from app.questions import generate_questions
 from app.spaced_rep import ReviewState
-from app.storage import save_entry
 
 load_dotenv()
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+def on_startup():
+    # Creates the database tables if they don't exist yet, and imports any
+    # old data/reviews.json data the first time this runs after the upgrade.
+    init_db()
 
 
 class AnswerPayload(BaseModel):
