@@ -5,7 +5,9 @@ so the web frontend can call it. Run with:
 """
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from datetime import datetime, timedelta
+
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -18,6 +20,9 @@ from app.storage import (
     get_streak,
     get_due_reviews,
     get_library,
+    get_next_due_review,
+    get_review_state_row,
+    update_review_state,
 )
 from app.questions import generate_questions
 from app.spaced_rep import ReviewState
@@ -44,6 +49,15 @@ class AnswerPayload(BaseModel):
     answers: list[str]
 
 
+class GradePayload(BaseModel):
+    grade: str  # one of: "again", "hard", "good", "easy"
+
+
+# Maps the plain-language buttons shown to the user onto SM-2's 0-5 quality
+# scale (see spaced_rep.py — below 3 counts as "forgot" and resets progress).
+GRADE_TO_QUALITY = {"again": 1, "hard": 3, "good": 4, "easy": 5}
+
+
 @app.get("/api/categories")
 def api_get_categories():
     return CATEGORIES
@@ -63,6 +77,33 @@ def api_get_library(category: str | None = None):
     return get_library(category)
 
 
+@app.get("/api/reviews/next")
+def api_reviews_next():
+    article = get_next_due_review()
+    return article if article else {}
+
+
+@app.post("/api/reviews/{article_id}/grade")
+def api_reviews_grade(article_id: int, payload: GradePayload):
+    if payload.grade not in GRADE_TO_QUALITY:
+        raise HTTPException(status_code=400, detail=f"Unknown grade '{payload.grade}'")
+
+    row = get_review_state_row(article_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No review found for that article")
+
+    review_state = ReviewState(
+        repetitions=row["repetitions"],
+        ease_factor=row["ease_factor"],
+        interval_days=row["interval_days"],
+        due_date=row["due_date"],
+    )
+    review_state.review(GRADE_TO_QUALITY[payload.grade])
+    update_review_state(article_id, review_state)
+
+    return {"status": "graded", "next_due": review_state.due_date}
+
+
 @app.get("/api/piece")
 def api_get_piece(category: str = "science"):
     piece = get_piece(category)
@@ -72,7 +113,11 @@ def api_get_piece(category: str = "science"):
 
 @app.post("/api/answer")
 def api_save_answer(payload: AnswerPayload):
-    review_state = ReviewState()
+    # First review is tomorrow — asking you about something you read seconds
+    # ago wouldn't test your memory at all.
+    review_state = ReviewState(
+        due_date=(datetime.utcnow() + timedelta(days=1)).isoformat()
+    )
     save_entry(
         piece={
             "title": payload.title,

@@ -314,3 +314,69 @@ def get_streak() -> int:
         cursor_date = cursor_date - timedelta(days=1)
 
     return streak
+
+
+def get_next_due_review() -> dict | None:
+    """
+    The single earliest-due article ready for review, with its full details
+    (including its saved questions/answers, for self-testing) — or None if
+    nothing is due right now.
+    """
+    conn = _connect()
+    now = datetime.utcnow().isoformat()
+    row = conn.execute(
+        """
+        SELECT articles.* FROM articles
+        JOIN review_state ON review_state.article_id = articles.id
+        WHERE review_state.due_date <= ?
+        ORDER BY review_state.due_date ASC
+        LIMIT 1
+        """,
+        (now,),
+    ).fetchone()
+
+    if row is None:
+        conn.close()
+        return None
+
+    questions = conn.execute(
+        "SELECT question_text, answer_text FROM questions WHERE article_id = ?",
+        (row["id"],),
+    ).fetchall()
+    conn.close()
+
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "summary": row["summary"],
+        "url": row["url"],
+        "source": row["source"],
+        "category": row["category"],
+        "questions": [
+            {"question": q["question_text"], "answer": q["answer_text"]}
+            for q in questions
+        ],
+    }
+
+
+def get_review_state_row(article_id: int) -> dict | None:
+    """The raw SM-2 fields for one article, so we can update them after grading."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT * FROM review_state WHERE article_id = ?", (article_id,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def update_review_state(article_id: int, review_state) -> None:
+    """Writes a ReviewState's fields back to the database after grading a review."""
+    rs = asdict(review_state)
+    conn = _connect()
+    conn.execute(
+        "UPDATE review_state SET repetitions = ?, ease_factor = ?, "
+        "interval_days = ?, due_date = ? WHERE article_id = ?",
+        (rs["repetitions"], rs["ease_factor"], rs["interval_days"], rs["due_date"], article_id),
+    )
+    conn.commit()
+    conn.close()

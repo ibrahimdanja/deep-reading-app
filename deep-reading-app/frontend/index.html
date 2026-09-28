@@ -175,6 +175,56 @@
   }
   .library-a:empty::before { content: "(no answer given)"; color: var(--muted); }
 
+  /* --- Reviews view --- */
+  .review-caught-up {
+    color: var(--muted);
+    font-size: 0.95rem;
+    padding: 20px 0 30px;
+  }
+  .review-title {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 1.4rem;
+    line-height: 1.3;
+    margin: 0 0 20px;
+  }
+  .review-summary {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #dcdfe8;
+    margin: 0 0 26px;
+  }
+  .review-recall-prompt {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0 0 20px;
+    font-style: italic;
+  }
+  .review-qa-list { display: none; margin: 0 0 30px; }
+  .review-qa-list.visible { display: block; }
+
+  .grade-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .grade-btn {
+    flex: 1;
+    min-width: 70px;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--hairline);
+    padding: 12px 8px;
+    font-size: 0.82rem;
+  }
+  .grade-btn:hover { opacity: 1; border-color: var(--amber-dim); }
+  .grade-again { border-bottom: 2px solid #c76b6b; }
+  .grade-hard { border-bottom: 2px solid #d3a15a; }
+  .grade-good { border-bottom: 2px solid var(--sage); }
+  .grade-easy { border-bottom: 2px solid var(--amber); }
+
   /* --- Read view --- */
   .loading {
     color: var(--muted);
@@ -299,6 +349,7 @@
   <div class="nav-row">
     <button class="nav-btn active" id="navHome">Home</button>
     <button class="nav-btn" id="navLibrary">Library</button>
+    <button class="nav-btn" id="navReviews">Reviews</button>
     <button class="nav-btn" id="navRead">Read</button>
   </div>
 
@@ -335,6 +386,11 @@
     <p class="empty-note" id="libraryEmpty" style="display:none;">
       Nothing here yet in this category.
     </p>
+  </div>
+
+  <!-- ===== REVIEWS VIEW ===== -->
+  <div class="view" id="reviewsView">
+    <div id="reviewContent"></div>
   </div>
 
   <!-- ===== READ VIEW ===== -->
@@ -376,18 +432,22 @@ let categoriesCache = null;
 function showView(name) {
   document.getElementById('homeView').classList.toggle('visible', name === 'home');
   document.getElementById('libraryView').classList.toggle('visible', name === 'library');
+  document.getElementById('reviewsView').classList.toggle('visible', name === 'reviews');
   document.getElementById('readView').classList.toggle('visible', name === 'read');
   document.getElementById('navHome').classList.toggle('active', name === 'home');
   document.getElementById('navLibrary').classList.toggle('active', name === 'library');
+  document.getElementById('navReviews').classList.toggle('active', name === 'reviews');
   document.getElementById('navRead').classList.toggle('active', name === 'read');
 
   if (name === 'home') loadHome();
   if (name === 'library') { loadLibraryCategoryPills(); loadLibrary(); }
+  if (name === 'reviews') loadNextReview();
   if (name === 'read' && !currentPiece) loadPiece();
 }
 
 document.getElementById('navHome').addEventListener('click', () => showView('home'));
 document.getElementById('navLibrary').addEventListener('click', () => showView('library'));
+document.getElementById('navReviews').addEventListener('click', () => showView('reviews'));
 document.getElementById('navRead').addEventListener('click', () => showView('read'));
 document.getElementById('startReadingBtn').addEventListener('click', () => showView('read'));
 
@@ -504,6 +564,66 @@ async function loadLibrary() {
 
     div.addEventListener('click', () => div.classList.toggle('open'));
     list.appendChild(div);
+  });
+}
+
+// ---------- Reviews view ----------
+
+let currentReviewArticleId = null;
+
+async function loadNextReview() {
+  const content = document.getElementById('reviewContent');
+  content.innerHTML = '<p class="review-caught-up">Loading...</p>';
+
+  const res = await fetch('/api/reviews/next');
+  const article = await res.json();
+
+  if (!article.id) {
+    currentReviewArticleId = null;
+    content.innerHTML = `
+      <p class="review-caught-up">You're all caught up — nothing due for review right now.</p>
+    `;
+    return;
+  }
+
+  currentReviewArticleId = article.id;
+
+  const qaHtml = article.questions.map(qa => `
+    <div class="library-qa">
+      <p class="library-q">${qa.question}</p>
+      <p class="library-a">${qa.answer || ''}</p>
+    </div>
+  `).join('');
+
+  content.innerHTML = `
+    <p class="review-title">${article.title}</p>
+    <p class="review-summary">${article.summary}</p>
+    <p class="review-recall-prompt">Before looking, try to recall: what was the core idea here, and how did you answer the questions?</p>
+    <button id="revealAnswersBtn">Show what I wrote</button>
+    <div class="review-qa-list" id="reviewQaList">${qaHtml}</div>
+    <p class="review-recall-prompt" style="margin-top:10px;">Could you still explain this?</p>
+    <div class="grade-row">
+      <button class="grade-btn grade-again" data-grade="again">Again</button>
+      <button class="grade-btn grade-hard" data-grade="hard">Hard</button>
+      <button class="grade-btn grade-good" data-grade="good">Good</button>
+      <button class="grade-btn grade-easy" data-grade="easy">Easy</button>
+    </div>
+  `;
+
+  document.getElementById('revealAnswersBtn').addEventListener('click', () => {
+    document.getElementById('reviewQaList').classList.add('visible');
+  });
+
+  document.querySelectorAll('.grade-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const grade = btn.dataset.grade;
+      await fetch(`/api/reviews/${currentReviewArticleId}/grade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grade }),
+      });
+      loadNextReview();
+    });
   });
 }
 
