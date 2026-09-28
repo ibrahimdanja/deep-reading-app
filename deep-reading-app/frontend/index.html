@@ -16,13 +16,32 @@
     --amber-dim: #e3a04f33;
     --sage: #7fb69e;
     --hairline: #ffffff14;
+    --glow: #e3a05522;
+    --text-soft: #dcdfe8;
+    --text-mid: #c9cdd8;
+    --on-amber: #1a1206;
+    --read-scale: 1;
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --text: #1b1f2a;
+    --muted: #667085;
+    --amber: #9a5b0a;
+    --amber-dim: #9a5b0a26;
+    --sage: #2f7a5a;
+    --hairline: #0000001f;
+    --glow: #9a5b0a14;
+    --text-soft: #2b3140;
+    --text-mid: #3d4455;
+    --on-amber: #ffffff;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     margin: 0;
     background:
-      radial-gradient(ellipse 600px 400px at 50% -10%, #e3a05522, transparent 70%),
+      radial-gradient(ellipse 600px 400px at 50% -10%, var(--glow), transparent 70%),
       var(--bg);
     color: var(--text);
     font-family: 'Manrope', sans-serif;
@@ -169,7 +188,7 @@
   }
   .library-a {
     font-size: 0.88rem;
-    color: #c9cdd8;
+    color: var(--text-mid);
     line-height: 1.55;
     white-space: pre-wrap;
   }
@@ -190,9 +209,9 @@
   }
   .review-summary {
     font-family: 'Source Serif 4', serif;
-    font-size: 1rem;
+    font-size: calc(1rem * var(--read-scale));
     line-height: 1.7;
-    color: #dcdfe8;
+    color: var(--text-soft);
     margin: 0 0 26px;
   }
   .review-recall-prompt {
@@ -225,6 +244,57 @@
   .grade-good { border-bottom: 2px solid var(--sage); }
   .grade-easy { border-bottom: 2px solid var(--amber); }
 
+  /* --- Reader settings --- */
+  .lamp-mark { position: relative; }
+  .aa-btn {
+    margin-left: auto;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 5px 11px;
+    font-size: 0.8rem;
+  }
+  .aa-btn:hover { color: var(--text); opacity: 1; }
+  .settings-panel {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 36px;
+    z-index: 10;
+    width: 230px;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 8px 24px #00000033;
+  }
+  .settings-panel.open { display: block; }
+  .settings-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 0 0 8px;
+  }
+  .seg { display: flex; gap: 6px; margin-bottom: 14px; }
+  .seg:last-child { margin-bottom: 0; }
+  .seg button {
+    flex: 1;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 7px 4px;
+    font-size: 0.78rem;
+  }
+  .seg button:hover { color: var(--text); opacity: 1; }
+  .seg button.active {
+    color: var(--amber);
+    background: var(--amber-dim);
+    border-color: var(--amber-dim);
+  }
+
   /* --- Read view --- */
   .loading {
     color: var(--muted);
@@ -251,9 +321,9 @@
   }
   p.summary {
     font-family: 'Source Serif 4', serif;
-    font-size: 1.08rem;
+    font-size: calc(1.08rem * var(--read-scale));
     line-height: 1.75;
-    color: #dcdfe8;
+    color: var(--text-soft);
     margin: 0 0 36px;
     max-width: 62ch;
   }
@@ -274,7 +344,7 @@
     padding: 12px 22px;
     cursor: pointer;
     background: var(--amber);
-    color: #1a1206;
+    color: var(--on-amber);
     transition: opacity 0.15s ease;
   }
   button:hover { opacity: 0.88; }
@@ -341,10 +411,36 @@
     .margin-section, .saved-msg { transition: none; }
   }
 </style>
+<script>
+(function () {
+  try {
+    var pref = localStorage.getItem('theme') || 'dark';
+    var light = pref === 'light' || (pref === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
+    document.documentElement.dataset.theme = light ? 'light' : 'dark';
+    var scale = parseFloat(localStorage.getItem('readScale'));
+    if (scale) document.documentElement.style.setProperty('--read-scale', scale);
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 <main>
-  <div class="lamp-mark"><div class="lamp-dot"></div><span>deep reading</span></div>
+  <div class="lamp-mark"><div class="lamp-dot"></div><span>deep reading</span>
+    <button class="aa-btn" id="settingsBtn" aria-label="Reading settings" aria-expanded="false">Aa</button>
+    <div class="settings-panel" id="settingsPanel">
+      <p class="settings-label">Theme</p>
+      <div class="seg">
+        <button data-theme-pref="system">System</button>
+        <button data-theme-pref="dark">Dark</button>
+        <button data-theme-pref="light">Light</button>
+      </div>
+      <p class="settings-label">Text size</p>
+      <div class="seg">
+        <button id="fontDown" aria-label="Smaller text">A&minus;</button>
+        <button id="fontUp" aria-label="Larger text">A+</button>
+      </div>
+    </div>
+  </div>
 
   <div class="nav-row">
     <button class="nav-btn active" id="navHome">Home</button>
@@ -705,6 +801,62 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   msg.classList.add('show');
   setTimeout(() => { loadPiece(); }, 1400);
 });
+
+// ---------- Reader settings: theme + text size ----------
+
+// Settings are kept in memory too, so they still work for this visit even if
+// the browser blocks saving (some privacy modes do).
+const memoryPrefs = {};
+function getPref(key, fallback) {
+  if (key in memoryPrefs) return memoryPrefs[key];
+  try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; }
+}
+function setPref(key, value) {
+  memoryPrefs[key] = value;
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
+
+function applyTheme() {
+  const pref = getPref('theme', 'dark');
+  const light = pref === 'light' ||
+    (pref === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  document.querySelectorAll('[data-theme-pref]').forEach(b => {
+    b.classList.toggle('active', b.dataset.themePref === pref);
+  });
+}
+
+function changeTextSize(delta) {
+  const current = parseFloat(getPref('readScale', '1'));
+  const next = Math.min(1.5, Math.max(0.85, Math.round((current + delta) * 100) / 100));
+  setPref('readScale', String(next));
+  document.documentElement.style.setProperty('--read-scale', next);
+}
+
+document.querySelectorAll('[data-theme-pref]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setPref('theme', btn.dataset.themePref);
+    applyTheme();
+  });
+});
+document.getElementById('fontDown').addEventListener('click', () => changeTextSize(-0.08));
+document.getElementById('fontUp').addEventListener('click', () => changeTextSize(0.08));
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
+
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = settingsPanel.classList.toggle('open');
+  settingsBtn.setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('click', (e) => {
+  if (!settingsPanel.contains(e.target)) {
+    settingsPanel.classList.remove('open');
+    settingsBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+applyTheme();
 
 loadCategories();
 loadHome();
