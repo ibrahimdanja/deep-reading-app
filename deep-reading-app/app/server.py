@@ -23,8 +23,10 @@ from app.storage import (
     get_next_due_review,
     get_review_state_row,
     update_review_state,
+    get_category_activity,
 )
-from app.questions import generate_questions
+from app.recommend import recommend
+from app.questions import get_questions
 from app.spaced_rep import ReviewState
 
 load_dotenv()
@@ -104,11 +106,25 @@ def api_reviews_grade(article_id: int, payload: GradePayload):
     return {"status": "graded", "next_due": review_state.due_date}
 
 
+@app.get("/api/recommend")
+def api_recommend():
+    return recommend(CATEGORIES, get_category_activity(), due_count=len(get_due_reviews()))
+
+
 @app.get("/api/piece")
 def api_get_piece(category: str = "science"):
     piece = get_piece(category)
-    questions = generate_questions(piece["title"], piece["summary"])
-    return {**piece, "questions": questions}
+    result = get_questions(piece["title"], piece["summary"])
+    return {
+        **piece,
+        "questions": result["questions"],
+        "question_source": result["source"],
+        "question_notice": {
+            "reason": result["reason"],
+            "retry_after": result["retry_after"],
+            "resets_at": result["resets_at"],
+        } if result["source"] == "fallback" else None,
+    }
 
 
 @app.post("/api/answer")

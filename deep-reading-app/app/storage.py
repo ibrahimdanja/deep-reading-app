@@ -380,3 +380,14 @@ def update_review_state(article_id: int, review_state) -> None:
     )
     conn.commit()
     conn.close()
+
+
+def get_category_activity() -> dict:
+    """For each subject you've saved something in: how many, and when most recently."""
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT category, COUNT(*) AS n, MAX(date_saved) AS last_saved "
+        "FROM articles WHERE category IS NOT NULL GROUP BY category"
+    ).fetchall()
+    conn.close()
+    return {r["category"]: {"count": r["n"], "last_saved": r["last_saved"]} for r in rows}

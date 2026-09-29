@@ -295,6 +295,38 @@
     border-color: var(--amber-dim);
   }
 
+  /* --- Recommendation + reminders --- */
+  .why-note {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-style: italic;
+    margin: 0 0 18px;
+  }
+  .why-note:empty { display: none; }
+  .due-note { font-size: 0.88rem; color: var(--muted); margin: -16px 0 26px; }
+  .linklike {
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--amber-dim);
+    border-radius: 0;
+    padding: 0;
+    color: var(--amber);
+    font-size: inherit;
+    font-weight: 500;
+  }
+  .linklike:hover { opacity: 1; border-bottom-color: var(--amber); }
+
+  .fallback-notice {
+    font-size: 0.82rem;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 0 0 22px;
+    line-height: 1.5;
+  }
+
   /* --- Read view --- */
   .loading {
     color: var(--muted);
@@ -464,8 +496,10 @@
       </div>
     </div>
 
+    <p class="due-note" id="dueNote" style="display:none;"></p>
+
     <div class="start-reading-row">
-      <button id="startReadingBtn">Give me something to read</button>
+      <button id="startReadingBtn">Give me something interesting</button>
     </div>
 
     <p class="section-heading" style="margin-top:44px;">Recently read</p>
@@ -491,6 +525,7 @@
 
   <!-- ===== READ VIEW ===== -->
   <div class="view" id="readView">
+    <p class="why-note" id="whyNote"></p>
     <div class="category-row" id="categoryRow"></div>
 
     <p class="loading" id="loading">Finding something worth reading...</p>
@@ -507,6 +542,7 @@
 
       <section class="margin-section" id="marginSection">
         <p class="margin-label">Sit with these before moving on.</p>
+        <p class="fallback-notice" id="fallbackNotice" style="display:none;"></p>
         <div id="questionsWrap"></div>
         <div class="save-row">
           <button id="saveBtn">Save my answers</button>
@@ -545,7 +581,7 @@ document.getElementById('navHome').addEventListener('click', () => showView('hom
 document.getElementById('navLibrary').addEventListener('click', () => showView('library'));
 document.getElementById('navReviews').addEventListener('click', () => showView('reviews'));
 document.getElementById('navRead').addEventListener('click', () => showView('read'));
-document.getElementById('startReadingBtn').addEventListener('click', () => showView('read'));
+document.getElementById('startReadingBtn').addEventListener('click', giveMeSomething);
 
 // ---------- Shared: categories ----------
 
@@ -565,6 +601,19 @@ async function loadHome() {
 
   document.getElementById('streakNum').textContent = data.streak;
   document.getElementById('dueNum').textContent = data.due_count;
+
+  const dueNote = document.getElementById('dueNote');
+  if (data.due_count > 0) {
+    dueNote.innerHTML = '<button class="linklike" id="dueLink"></button>';
+    const link = document.getElementById('dueLink');
+    link.textContent = data.due_count === 1
+      ? '1 review is waiting - do it first?'
+      : `${data.due_count} reviews are waiting - do them first?`;
+    link.addEventListener('click', () => showView('reviews'));
+    dueNote.style.display = 'block';
+  } else {
+    dueNote.style.display = 'none';
+  }
 
   const list = document.getElementById('recentList');
   const empty = document.getElementById('recentEmpty');
@@ -723,6 +772,30 @@ async function loadNextReview() {
   });
 }
 
+// ---------- "Give me something interesting" ----------
+
+async function giveMeSomething() {
+  let rec;
+  try {
+    const res = await fetch('/api/recommend');
+    rec = await res.json();
+  } catch (e) {
+    showView('read');  // if the suggestion fails, just open Read as before
+    return;
+  }
+  currentCategory = rec.category;
+  currentPiece = null;  // forces a fresh piece for the chosen subject
+  syncCategoryPills();
+  document.getElementById('whyNote').textContent = rec.reason;
+  showView('read');
+}
+
+function syncCategoryPills() {
+  document.querySelectorAll('#categoryRow .category-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.key === currentCategory);
+  });
+}
+
 // ---------- Read view ----------
 
 async function loadCategories() {
@@ -733,14 +806,38 @@ async function loadCategories() {
     const btn = document.createElement('button');
     btn.className = 'category-btn' + (key === currentCategory ? ' active' : '');
     btn.textContent = label;
+    btn.dataset.key = key;
     btn.addEventListener('click', () => {
       currentCategory = key;
+      document.getElementById('whyNote').textContent = '';
       document.querySelectorAll('#categoryRow .category-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       loadPiece();
     });
     row.appendChild(btn);
   });
+}
+
+function fallbackMessage(notice) {
+  const base = "These are general reflection questions instead of AI-generated ones";
+  if (!notice) return base + ".";
+  if (notice.reason === 'daily') {
+    if (notice.resets_at) {
+      const resetTime = new Date(notice.resets_at).toLocaleString(undefined, {
+        weekday: 'short', hour: 'numeric', minute: '2-digit',
+      });
+      return `${base} — the free AI question limit for today is used up. It resets around ${resetTime}, your time.`;
+    }
+    return `${base} — the free AI question limit for today is used up.`;
+  }
+  if (notice.reason === 'minute' && notice.retry_after) {
+    const secs = Math.ceil(notice.retry_after);
+    return `${base} — AI questions are briefly rate-limited. Try again in about ${secs}s.`;
+  }
+  if (notice.reason === 'no_key') {
+    return `${base} — no Gemini API key is set up yet.`;
+  }
+  return `${base} — the AI question service didn't respond this time.`;
 }
 
 async function loadPiece() {
@@ -755,6 +852,14 @@ async function loadPiece() {
   document.getElementById('pieceTitle').textContent = data.title;
   document.getElementById('pieceSummary').textContent = data.summary;
   document.getElementById('pieceUrl').href = data.url;
+
+  const notice = document.getElementById('fallbackNotice');
+  if (data.question_source === 'fallback') {
+    notice.textContent = fallbackMessage(data.question_notice);
+    notice.style.display = 'block';
+  } else {
+    notice.style.display = 'none';
+  }
 
   const wrap = document.getElementById('questionsWrap');
   wrap.innerHTML = '';
@@ -799,7 +904,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 
   const msg = document.getElementById('savedMsg');
   msg.classList.add('show');
-  setTimeout(() => { loadPiece(); }, 1400);
+  setTimeout(() => { currentPiece = null; showView('home'); }, 1200);
 });
 
 // ---------- Reader settings: theme + text size ----------
@@ -857,6 +962,7 @@ document.addEventListener('click', (e) => {
   }
 });
 applyTheme();
+
 
 loadCategories();
 loadHome();
