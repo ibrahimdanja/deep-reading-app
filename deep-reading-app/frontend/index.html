@@ -1,162 +1,959 @@
-"""
-Thin API layer over the existing pipeline (content.py, questions.py, storage.py)
-so the web frontend can call it. Run with:
-    uvicorn app.server:app --reload
-"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deep Reading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12141f;
+    --panel: #1b1e2c;
+    --text: #eef0f5;
+    --muted: #8a90a6;
+    --amber: #e3a04f;
+    --amber-dim: #e3a04f33;
+    --sage: #7fb69e;
+    --hairline: #ffffff14;
+    --glow: #e3a05522;
+    --text-soft: #dcdfe8;
+    --text-mid: #c9cdd8;
+    --on-amber: #1a1206;
+    --read-scale: 1;
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --text: #1b1f2a;
+    --muted: #667085;
+    --amber: #9a5b0a;
+    --amber-dim: #9a5b0a26;
+    --sage: #2f7a5a;
+    --hairline: #0000001f;
+    --glow: #9a5b0a14;
+    --text-soft: #2b3140;
+    --text-mid: #3d4455;
+    --on-amber: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 600px 400px at 50% -10%, var(--glow), transparent 70%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px 80px;
+  }
+  main {
+    width: 100%;
+    max-width: 620px;
+  }
+  .lamp-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .lamp-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 12px 2px var(--amber-dim);
+  }
+  .lamp-mark span {
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
 
-from dotenv import load_dotenv
-from datetime import datetime, timedelta
+  .nav-row {
+    display: flex;
+    gap: 22px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 14px;
+  }
+  .nav-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .nav-btn:hover { color: var(--text); opacity: 1; }
+  .nav-btn.active { color: var(--amber); }
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+  .view { display: none; }
+  .view.visible { display: block; }
 
-from app.content import CATEGORIES, get_piece
-from app.storage import (
-    init_db,
-    save_entry,
-    get_recent,
-    get_streak,
-    get_due_reviews,
-    get_library,
-    get_next_due_review,
-    get_review_state_row,
-    update_review_state,
-    get_category_activity,
-    get_stats,
-)
-from app.recommend import recommend
-from app.questions import get_questions
-from app.spaced_rep import ReviewState
+  .greeting {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.5rem;
+    margin: 0 0 30px;
+  }
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 18px 16px;
+    margin-bottom: 40px;
+  }
+  .stat-block .stat-num {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--amber);
+    font-family: 'Source Serif 4', serif;
+  }
+  .stat-block .stat-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .section-heading {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 0 0 16px;
+  }
+  .recent-item {
+    padding: 14px 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .recent-item:last-child { border-bottom: 1px solid var(--hairline); }
+  .recent-title {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1rem;
+    margin: 0 0 4px;
+  }
+  .recent-meta { font-size: 0.75rem; color: var(--muted); }
+  .empty-note { color: var(--muted); font-size: 0.9rem; margin: 10px 0 30px; }
+  .start-reading-row { margin-top: 30px; }
 
-load_dotenv()
+  .category-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 36px;
+  }
+  .category-btn {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+  .category-btn:hover { color: var(--text); opacity: 1; }
+  .category-btn.active {
+    background: var(--amber-dim);
+    color: var(--amber);
+    border-color: var(--amber-dim);
+  }
 
-app = FastAPI()
+  .library-item {
+    padding: 18px 0;
+    border-top: 1px solid var(--hairline);
+    cursor: pointer;
+  }
+  .library-item:last-child { border-bottom: 1px solid var(--hairline); }
+  .library-title {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.05rem;
+    margin: 0 0 5px;
+  }
+  .library-meta { font-size: 0.75rem; color: var(--muted); }
+  .library-detail {
+    display: none;
+    margin-top: 16px;
+    padding-left: 2px;
+  }
+  .library-item.open .library-detail { display: block; }
+  .library-qa { margin-bottom: 16px; }
+  .library-q {
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    margin: 0 0 6px;
+  }
+  .library-a {
+    font-size: 0.88rem;
+    color: var(--text-mid);
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+  .library-a:empty::before { content: "(no answer given)"; color: var(--muted); }
 
+  .review-caught-up {
+    color: var(--muted);
+    font-size: 0.95rem;
+    padding: 20px 0 30px;
+  }
+  .review-title {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 1.4rem;
+    line-height: 1.3;
+    margin: 0 0 20px;
+  }
+  .review-summary {
+    font-family: 'Source Serif 4', serif;
+    font-size: calc(1rem * var(--read-scale));
+    line-height: 1.7;
+    color: var(--text-soft);
+    margin: 0 0 26px;
+  }
+  .review-recall-prompt {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0 0 20px;
+    font-style: italic;
+  }
+  .review-qa-list { display: none; margin: 0 0 30px; }
+  .review-qa-list.visible { display: block; }
 
-@app.on_event("startup")
-def on_startup():
-    # Creates the database tables if they don't exist yet, and imports any
-    # old data/reviews.json data the first time this runs after the upgrade.
-    init_db()
+  .grade-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .grade-btn {
+    flex: 1;
+    min-width: 70px;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--hairline);
+    padding: 12px 8px;
+    font-size: 0.82rem;
+  }
+  .grade-btn:hover { opacity: 1; border-color: var(--amber-dim); }
+  .grade-again { border-bottom: 2px solid #c76b6b; }
+  .grade-hard { border-bottom: 2px solid #d3a15a; }
+  .grade-good { border-bottom: 2px solid var(--sage); }
+  .grade-easy { border-bottom: 2px solid var(--amber); }
 
+  .lamp-mark { position: relative; }
+  .aa-btn {
+    margin-left: auto;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 5px 11px;
+    font-size: 0.8rem;
+  }
+  .aa-btn:hover { color: var(--text); opacity: 1; }
+  .settings-panel {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 36px;
+    z-index: 10;
+    width: 230px;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 8px 24px #00000033;
+  }
+  .settings-panel.open { display: block; }
+  .settings-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 0 0 8px;
+  }
+  .seg { display: flex; gap: 6px; margin-bottom: 14px; }
+  .seg:last-child { margin-bottom: 0; }
+  .seg button {
+    flex: 1;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 7px 4px;
+    font-size: 0.78rem;
+  }
+  .seg button:hover { color: var(--text); opacity: 1; }
+  .seg button.active {
+    color: var(--amber);
+    background: var(--amber-dim);
+    border-color: var(--amber-dim);
+  }
 
-class AnswerPayload(BaseModel):
-    title: str
-    summary: str
-    url: str
-    source: str
-    category: str
-    questions: list[str]
-    answers: list[str]
+  .why-note {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-style: italic;
+    margin: 0 0 18px;
+  }
+  .why-note:empty { display: none; }
+  .due-note { font-size: 0.88rem; color: var(--muted); margin: -16px 0 26px; }
+  .linklike {
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--amber-dim);
+    border-radius: 0;
+    padding: 0;
+    color: var(--amber);
+    font-size: inherit;
+    font-weight: 500;
+  }
+  .linklike:hover { opacity: 1; border-bottom-color: var(--amber); }
 
+  .fallback-notice {
+    font-size: 0.82rem;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 0 0 22px;
+    line-height: 1.5;
+  }
 
-class GradePayload(BaseModel):
-    grade: str  # one of: "again", "hard", "good", "easy"
+  .loading {
+    color: var(--muted);
+    font-size: 0.95rem;
+    padding: 40px 0;
+  }
+  article.piece {
+    display: none;
+  }
+  article.piece.visible { display: block; }
 
+  .source-line {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  h1.title {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 1.6rem;
+    line-height: 1.3;
+    margin: 0 0 22px;
+    max-width: 26ch;
+  }
+  p.summary {
+    font-family: 'Source Serif 4', serif;
+    font-size: calc(1.08rem * var(--read-scale));
+    line-height: 1.75;
+    color: var(--text-soft);
+    margin: 0 0 36px;
+    max-width: 62ch;
+  }
+  a.source-link {
+    color: var(--amber);
+    text-decoration: none;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--amber-dim);
+  }
+  a.source-link:hover { border-bottom-color: var(--amber); }
 
-# Maps the plain-language buttons shown to the user onto SM-2's 0-5 quality
-# scale (see spaced_rep.py — below 3 counts as "forgot" and resets progress).
-GRADE_TO_QUALITY = {"again": 1, "hard": 3, "good": 4, "easy": 5}
+  button {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 22px;
+    cursor: pointer;
+    background: var(--amber);
+    color: var(--on-amber);
+    transition: opacity 0.15s ease;
+  }
+  button:hover { opacity: 0.88; }
+  button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
 
+  .reveal-row { margin: 30px 0 10px; }
 
-@app.get("/api/categories")
-def api_get_categories():
-    return CATEGORIES
+  .margin-section {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 1px solid var(--hairline);
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.5s ease, opacity 0.5s ease;
+  }
+  .margin-section.open {
+    max-height: 2000px;
+    opacity: 1;
+  }
+  .margin-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 22px;
+  }
+  .question-block { margin-bottom: 26px; }
+  .question-text {
+    font-family: 'Source Serif 4', serif;
+    font-style: italic;
+    font-size: 1.02rem;
+    color: var(--text);
+    line-height: 1.5;
+    margin: 0 0 10px;
+  }
+  textarea {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.92rem;
+    padding: 12px 14px;
+    min-height: 64px;
+    resize: vertical;
+  }
+  textarea:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 1px;
+  }
+  textarea::placeholder { color: var(--muted); }
 
+  .save-row { margin-top: 8px; display: flex; align-items: center; gap: 14px; }
+  .saved-msg {
+    color: var(--sage);
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .saved-msg.show { opacity: 1; }
 
-@app.get("/api/home")
-def api_get_home():
-    stats = get_stats()
-    return {
-        "streak": stats["streak"],
-        "due_count": stats["reviews_due"],
-        "recent": get_recent(5),
-        "stats": stats,
+  @media (prefers-reduced-motion: reduce) {
+    .margin-section, .saved-msg { transition: none; }
+  }
+</style>
+<script>
+(function () {
+  try {
+    var pref = localStorage.getItem('theme') || 'dark';
+    var light = pref === 'light' || (pref === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
+    document.documentElement.dataset.theme = light ? 'light' : 'dark';
+    var scale = parseFloat(localStorage.getItem('readScale'));
+    if (scale) document.documentElement.style.setProperty('--read-scale', scale);
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+<main>
+  <div class="lamp-mark"><div class="lamp-dot"></div><span>deep reading</span>
+    <button class="aa-btn" id="settingsBtn" aria-label="Reading settings" aria-expanded="false">Aa</button>
+    <div class="settings-panel" id="settingsPanel">
+      <p class="settings-label">Theme</p>
+      <div class="seg">
+        <button data-theme-pref="system">System</button>
+        <button data-theme-pref="dark">Dark</button>
+        <button data-theme-pref="light">Light</button>
+      </div>
+      <p class="settings-label">Text size</p>
+      <div class="seg">
+        <button id="fontDown" aria-label="Smaller text">A&minus;</button>
+        <button id="fontUp" aria-label="Larger text">A+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="nav-btn active" id="navHome">Home</button>
+    <button class="nav-btn" id="navLibrary">Library</button>
+    <button class="nav-btn" id="navReviews">Reviews</button>
+    <button class="nav-btn" id="navRead">Read</button>
+  </div>
+
+  <div class="view visible" id="homeView">
+    <p class="greeting">Ready when you are.</p>
+
+    <div class="stats-row">
+      <div class="stat-block">
+        <div class="stat-num" id="streakNum">–</div>
+        <div class="stat-label">day streak</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="dueNum">–</div>
+        <div class="stat-label">reviews due</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="readsNum">–</div>
+        <div class="stat-label">reads saved</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="answersNum">–</div>
+        <div class="stat-label">answers logged</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="topicsNum">–</div>
+        <div class="stat-label">topics</div>
+      </div>
+    </div>
+
+    <p class="due-note" id="dueNote" style="display:none;"></p>
+
+    <div class="start-reading-row">
+      <button id="startReadingBtn">Give me something interesting</button>
+    </div>
+
+    <p class="section-heading" style="margin-top:44px;">Recently read</p>
+    <div id="recentList"></div>
+    <p class="empty-note" id="recentEmpty" style="display:none;">
+      Nothing saved yet — your reads will show up here.
+    </p>
+  </div>
+
+  <div class="view" id="libraryView">
+    <div class="category-row" id="libraryCategoryRow"></div>
+    <div id="libraryList"></div>
+    <p class="empty-note" id="libraryEmpty" style="display:none;">
+      Nothing here yet in this category.
+    </p>
+  </div>
+
+  <div class="view" id="reviewsView">
+    <div id="reviewContent"></div>
+  </div>
+
+  <div class="view" id="readView">
+    <p class="why-note" id="whyNote"></p>
+    <div class="category-row" id="categoryRow"></div>
+
+    <p class="loading" id="loading">Finding something worth reading...</p>
+
+    <article class="piece" id="piece">
+      <div class="source-line" id="sourceLine"></div>
+      <h1 class="title" id="pieceTitle"></h1>
+      <p class="summary" id="pieceSummary"></p>
+      <a class="source-link" id="pieceUrl" target="_blank" rel="noopener">Read the full source →</a>
+
+      <div class="reveal-row">
+        <button id="revealBtn">I've read it — show the questions</button>
+      </div>
+
+      <section class="margin-section" id="marginSection">
+        <p class="margin-label">Sit with these before moving on.</p>
+        <p class="fallback-notice" id="fallbackNotice" style="display:none;"></p>
+        <div id="questionsWrap"></div>
+        <div class="save-row">
+          <button id="saveBtn">Save my answers</button>
+          <span class="saved-msg" id="savedMsg">Saved.</span>
+        </div>
+      </section>
+    </article>
+  </div>
+</main>
+
+<script>
+let currentPiece = null;
+let currentCategory = 'science';
+let libraryCategory = null;
+let categoriesCache = null;
+
+function showView(name) {
+  document.getElementById('homeView').classList.toggle('visible', name === 'home');
+  document.getElementById('libraryView').classList.toggle('visible', name === 'library');
+  document.getElementById('reviewsView').classList.toggle('visible', name === 'reviews');
+  document.getElementById('readView').classList.toggle('visible', name === 'read');
+  document.getElementById('navHome').classList.toggle('active', name === 'home');
+  document.getElementById('navLibrary').classList.toggle('active', name === 'library');
+  document.getElementById('navReviews').classList.toggle('active', name === 'reviews');
+  document.getElementById('navRead').classList.toggle('active', name === 'read');
+
+  if (name === 'home') loadHome();
+  if (name === 'library') { loadLibraryCategoryPills(); loadLibrary(); }
+  if (name === 'reviews') loadNextReview();
+  if (name === 'read' && !currentPiece) loadPiece();
+}
+
+document.getElementById('navHome').addEventListener('click', () => showView('home'));
+document.getElementById('navLibrary').addEventListener('click', () => showView('library'));
+document.getElementById('navReviews').addEventListener('click', () => showView('reviews'));
+document.getElementById('navRead').addEventListener('click', () => showView('read'));
+document.getElementById('startReadingBtn').addEventListener('click', giveMeSomething);
+
+async function getCategories() {
+  if (!categoriesCache) {
+    const res = await fetch('/api/categories');
+    categoriesCache = await res.json();
+  }
+  return categoriesCache;
+}
+
+async function loadHome() {
+  const res = await fetch('/api/home');
+  const data = await res.json();
+  const stats = data.stats || {};
+
+  document.getElementById('streakNum').textContent = data.streak ?? stats.streak ?? 0;
+  document.getElementById('dueNum').textContent = data.due_count ?? stats.reviews_due ?? 0;
+  document.getElementById('readsNum').textContent = stats.articles_saved ?? 0;
+  document.getElementById('answersNum').textContent = stats.questions_answered ?? 0;
+  document.getElementById('topicsNum').textContent = stats.category_count ?? 0;
+
+  const dueNote = document.getElementById('dueNote');
+  const dueCount = data.due_count ?? stats.reviews_due ?? 0;
+  if (dueCount > 0) {
+    dueNote.innerHTML = '<button class="linklike" id="dueLink"></button>';
+    const link = document.getElementById('dueLink');
+    link.textContent = dueCount === 1
+      ? '1 review is waiting - do it first?'
+      : `${dueCount} reviews are waiting - do them first?`;
+    link.addEventListener('click', () => showView('reviews'));
+    dueNote.style.display = 'block';
+  } else {
+    dueNote.style.display = 'none';
+  }
+
+  const list = document.getElementById('recentList');
+  const empty = document.getElementById('recentEmpty');
+  list.innerHTML = '';
+
+  if ((data.recent || []).length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  data.recent.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'recent-item';
+    const date = new Date(item.date_saved).toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric',
+    });
+    div.innerHTML = `
+      <p class="recent-title">${item.title}</p>
+      <p class="recent-meta">${item.source} · ${date}</p>
+    `;
+    list.appendChild(div);
+  });
+}
+
+async function loadLibraryCategoryPills() {
+  const categories = await getCategories();
+  const row = document.getElementById('libraryCategoryRow');
+  row.innerHTML = '';
+
+  const allBtn = document.createElement('button');
+  allBtn.className = 'category-btn' + (libraryCategory === null ? ' active' : '');
+  allBtn.textContent = 'All';
+  allBtn.addEventListener('click', () => {
+    libraryCategory = null;
+    loadLibraryCategoryPills();
+    loadLibrary();
+  });
+  row.appendChild(allBtn);
+
+  Object.entries(categories).forEach(([key, label]) => {
+    const btn = document.createElement('button');
+    btn.className = 'category-btn' + (libraryCategory === key ? ' active' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      libraryCategory = key;
+      loadLibraryCategoryPills();
+      loadLibrary();
+    });
+    row.appendChild(btn);
+  });
+}
+
+async function loadLibrary() {
+  const url = libraryCategory
+    ? `/api/library?category=${libraryCategory}`
+    : '/api/library';
+  const res = await fetch(url);
+  const items = await res.json();
+
+  const list = document.getElementById('libraryList');
+  const empty = document.getElementById('libraryEmpty');
+  list.innerHTML = '';
+
+  if (items.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'library-item';
+
+    const date = new Date(item.date_saved).toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+
+    const qaHtml = item.questions.map(qa => `
+      <div class="library-qa">
+        <p class="library-q">${qa.question}</p>
+        <p class="library-a">${qa.answer || ''}</p>
+      </div>
+    `).join('');
+
+    div.innerHTML = `
+      <p class="library-title">${item.title}</p>
+      <p class="library-meta">${item.source} · ${date}</p>
+      <div class="library-detail">${qaHtml}</div>
+    `;
+
+    div.addEventListener('click', () => div.classList.toggle('open'));
+    list.appendChild(div);
+  });
+}
+
+let currentReviewArticleId = null;
+
+async function loadNextReview() {
+  const content = document.getElementById('reviewContent');
+  content.innerHTML = '<p class="review-caught-up">Loading...</p>';
+
+  const res = await fetch('/api/reviews/next');
+  const article = await res.json();
+
+  if (!article.id) {
+    currentReviewArticleId = null;
+    content.innerHTML = `
+      <p class="review-caught-up">You're all caught up — nothing due for review right now.</p>
+    `;
+    return;
+  }
+
+  currentReviewArticleId = article.id;
+
+  const qaHtml = article.questions.map(qa => `
+    <div class="library-qa">
+      <p class="library-q">${qa.question}</p>
+      <p class="library-a">${qa.answer || ''}</p>
+    </div>
+  `).join('');
+
+  content.innerHTML = `
+    <p class="review-title">${article.title}</p>
+    <p class="review-summary">${article.summary}</p>
+    <p class="review-recall-prompt">Before looking, try to recall: what was the core idea here, and how did you answer the questions?</p>
+    <button id="revealAnswersBtn">Show what I wrote</button>
+    <div class="review-qa-list" id="reviewQaList">${qaHtml}</div>
+    <p class="review-recall-prompt" style="margin-top:10px;">Could you still explain this?</p>
+    <div class="grade-row">
+      <button class="grade-btn grade-again" data-grade="again">Again</button>
+      <button class="grade-btn grade-hard" data-grade="hard">Hard</button>
+      <button class="grade-btn grade-good" data-grade="good">Good</button>
+      <button class="grade-btn grade-easy" data-grade="easy">Easy</button>
+    </div>
+  `;
+
+  document.getElementById('revealAnswersBtn').addEventListener('click', () => {
+    document.getElementById('reviewQaList').classList.add('visible');
+  });
+
+  document.querySelectorAll('.grade-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const grade = btn.dataset.grade;
+      await fetch(`/api/reviews/${currentReviewArticleId}/grade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grade }),
+      });
+      loadNextReview();
+    });
+  });
+}
+
+async function giveMeSomething() {
+  let rec;
+  try {
+    const res = await fetch('/api/recommend');
+    rec = await res.json();
+  } catch (e) {
+    showView('read');
+    return;
+  }
+  currentCategory = rec.category;
+  currentPiece = null;
+  syncCategoryPills();
+  document.getElementById('whyNote').textContent = rec.reason;
+  showView('read');
+}
+
+function syncCategoryPills() {
+  document.querySelectorAll('#categoryRow .category-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.key === currentCategory);
+  });
+}
+
+async function loadCategories() {
+  const categories = await getCategories();
+  const row = document.getElementById('categoryRow');
+  row.innerHTML = '';
+  Object.entries(categories).forEach(([key, label]) => {
+    const btn = document.createElement('button');
+    btn.className = 'category-btn' + (key === currentCategory ? ' active' : '');
+    btn.textContent = label;
+    btn.dataset.key = key;
+    btn.addEventListener('click', () => {
+      currentCategory = key;
+      document.getElementById('whyNote').textContent = '';
+      document.querySelectorAll('#categoryRow .category-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadPiece();
+    });
+    row.appendChild(btn);
+  });
+}
+
+function fallbackMessage(notice) {
+  const base = "These are general reflection questions instead of AI-generated ones";
+  if (!notice) return base + ".";
+  if (notice.reason === 'daily') {
+    if (notice.resets_at) {
+      const resetTime = new Date(notice.resets_at).toLocaleString(undefined, {
+        weekday: 'short', hour: 'numeric', minute: '2-digit',
+      });
+      return `${base} — the free AI question limit for today is used up. It resets around ${resetTime}, your time.`;
     }
+    return `${base} — the free AI question limit for today is used up.`;
+  }
+  if (notice.reason === 'minute' && notice.retry_after) {
+    const secs = Math.ceil(notice.retry_after);
+    return `${base} — AI questions are briefly rate-limited. Try again in about ${secs}s.`;
+  }
+  if (notice.reason === 'no_key') {
+    return `${base} — no Gemini API key is set up yet.`;
+  }
+  return `${base} — the AI question service didn't respond this time.`;
+}
 
+async function loadPiece() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('piece').classList.remove('visible');
 
-@app.get("/api/stats")
-def api_get_stats():
-    return get_stats()
+  const res = await fetch(`/api/piece?category=${currentCategory}`);
+  const data = await res.json();
+  currentPiece = data;
 
+  document.getElementById('sourceLine').textContent = data.source;
+  document.getElementById('pieceTitle').textContent = data.title;
+  document.getElementById('pieceSummary').textContent = data.summary;
+  document.getElementById('pieceUrl').href = data.url;
 
-@app.get("/api/library")
-def api_get_library(category: str | None = None):
-    return get_library(category)
+  const notice = document.getElementById('fallbackNotice');
+  if (data.question_source === 'fallback') {
+    notice.textContent = fallbackMessage(data.question_notice);
+    notice.style.display = 'block';
+  } else {
+    notice.style.display = 'none';
+  }
 
+  const wrap = document.getElementById('questionsWrap');
+  wrap.innerHTML = '';
+  data.questions.forEach((q, i) => {
+    const block = document.createElement('div');
+    block.className = 'question-block';
+    block.innerHTML = `
+      <p class="question-text">${q}</p>
+      <textarea data-idx="${i}" placeholder="Write your answer..."></textarea>
+    `;
+    wrap.appendChild(block);
+  });
 
-@app.get("/api/reviews/next")
-def api_reviews_next():
-    article = get_next_due_review()
-    return article if article else {}
+  document.getElementById('marginSection').classList.remove('open');
+  document.getElementById('savedMsg').classList.remove('show');
 
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('piece').classList.add('visible');
+}
 
-@app.post("/api/reviews/{article_id}/grade")
-def api_reviews_grade(article_id: int, payload: GradePayload):
-    if payload.grade not in GRADE_TO_QUALITY:
-        raise HTTPException(status_code=400, detail=f"Unknown grade '{payload.grade}'")
+document.getElementById('revealBtn').addEventListener('click', () => {
+  document.getElementById('marginSection').classList.add('open');
+});
 
-    row = get_review_state_row(article_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="No review found for that article")
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const textareas = document.querySelectorAll('#questionsWrap textarea');
+  const answers = Array.from(textareas).map(t => t.value);
 
-    review_state = ReviewState(
-        repetitions=row["repetitions"],
-        ease_factor=row["ease_factor"],
-        interval_days=row["interval_days"],
-        due_date=row["due_date"],
-    )
-    review_state.review(GRADE_TO_QUALITY[payload.grade])
-    update_review_state(article_id, review_state)
+  await fetch('/api/answer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: currentPiece.title,
+      summary: currentPiece.summary,
+      url: currentPiece.url,
+      source: currentPiece.source,
+      category: currentCategory,
+      questions: currentPiece.questions,
+      answers,
+    }),
+  });
 
-    return {"status": "graded", "next_due": review_state.due_date}
+  const msg = document.getElementById('savedMsg');
+  msg.classList.add('show');
+  setTimeout(() => { currentPiece = null; showView('home'); }, 1200);
+});
 
+const memoryPrefs = {};
+function getPref(key, fallback) {
+  if (key in memoryPrefs) return memoryPrefs[key];
+  try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; }
+}
+function setPref(key, value) {
+  memoryPrefs[key] = value;
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
 
-@app.get("/api/recommend")
-def api_recommend():
-    return recommend(CATEGORIES, get_category_activity(), due_count=len(get_due_reviews()))
+function applyTheme() {
+  const pref = getPref('theme', 'dark');
+  const light = pref === 'light' ||
+    (pref === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  document.querySelectorAll('[data-theme-pref]').forEach(b => {
+    b.classList.toggle('active', b.dataset.themePref === pref);
+  });
+}
 
+function changeTextSize(delta) {
+  const current = parseFloat(getPref('readScale', '1'));
+  const next = Math.min(1.5, Math.max(0.85, Math.round((current + delta) * 100) / 100));
+  setPref('readScale', String(next));
+  document.documentElement.style.setProperty('--read-scale', next);
+}
 
-@app.get("/api/piece")
-def api_get_piece(category: str = "science"):
-    piece = get_piece(category)
-    result = get_questions(piece["title"], piece["summary"])
-    return {
-        **piece,
-        "questions": result["questions"],
-        "question_source": result["source"],
-        "question_notice": {
-            "reason": result["reason"],
-            "retry_after": result["retry_after"],
-            "resets_at": result["resets_at"],
-        } if result["source"] == "fallback" else None,
-    }
+document.querySelectorAll('[data-theme-pref]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setPref('theme', btn.dataset.themePref);
+    applyTheme();
+  });
+});
+document.getElementById('fontDown').addEventListener('click', () => changeTextSize(-0.08));
+document.getElementById('fontUp').addEventListener('click', () => changeTextSize(0.08));
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
 
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+settingsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = settingsPanel.classList.toggle('open');
+  settingsBtn.setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('click', (e) => {
+  if (!settingsPanel.contains(e.target)) {
+    settingsPanel.classList.remove('open');
+    settingsBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+applyTheme();
 
-@app.post("/api/answer")
-def api_save_answer(payload: AnswerPayload):
-    # First review is tomorrow — asking you about something you read seconds
-    # ago wouldn't test your memory at all.
-    review_state = ReviewState(
-        due_date=(datetime.utcnow() + timedelta(days=1)).isoformat()
-    )
-    save_entry(
-        piece={
-            "title": payload.title,
-            "summary": payload.summary,
-            "url": payload.url,
-            "source": payload.source,
-        },
-        questions=payload.questions,
-        answers=payload.answers,
-        review_state=review_state,
-        category=payload.category,
-    )
-    return {"status": "saved"}
-
-
-# Serve the frontend
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
-
+loadCategories();
+loadHome();
+</script>
+</body>
+</html>
