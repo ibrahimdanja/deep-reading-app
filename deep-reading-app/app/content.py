@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 
 import feedparser
 import requests
+from bs4 import BeautifulSoup
 
 HEADERS = {"User-Agent": "deep-reading-app/0.1 (personal project)"}
 
@@ -81,6 +82,48 @@ def _fetch_aeon_piece() -> dict:
         "summary": summary,
         "url": entry.link,
         "source": "Aeon (philosophy & ideas)",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Stanford Encyclopedia of Philosophy (philosophy, rigorous)
+# ---------------------------------------------------------------------------
+# SEP has no API, so unlike the other sources above, this one parses the
+# actual webpage. It has one thing in its favour: a built-in "random entry"
+# link, so we don't need to maintain our own list of SEP's 1,800+ entries.
+
+SEP_RANDOM_URL = "https://plato.stanford.edu/cgi-bin/encyclopedia/random"
+
+
+def _fetch_sep_piece() -> dict:
+    response = requests.get(SEP_RANDOM_URL, headers=HEADERS, timeout=15, allow_redirects=True)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    title_el = soup.find("h1")
+    title = title_el.get_text(strip=True) if title_el else "(untitled)"
+
+    # SEP entries keep their opening paragraph(s) in a div with id="preamble",
+    # before the numbered table of contents starts.
+    preamble = soup.find(id="preamble")
+    if preamble:
+        paragraphs = preamble.find_all("p")
+        summary = " ".join(p.get_text(" ", strip=True) for p in paragraphs)
+    else:
+        summary = ""
+
+    if not summary:
+        raise RuntimeError(
+            "Could not find SEP's opening paragraph — the site's page layout "
+            "may have changed since this was written."
+        )
+
+    return {
+        "title": title,
+        "summary": summary,
+        "url": response.url,
+        "source": "Stanford Encyclopedia of Philosophy",
     }
 
 
@@ -206,7 +249,10 @@ def get_piece(category: str = "science") -> dict:
     if category == "science":
         return _fetch_arxiv_piece()
     if category == "philosophy":
-        return _fetch_aeon_piece()
+        # Two sources, picked at random each time — Aeon's accessible essays
+        # and SEP's rigorous philosophy proper, same way "science" already
+        # draws from several arXiv categories at random.
+        return random.choice([_fetch_aeon_piece, _fetch_sep_piece])()
     if category == "psychology":
         return _fetch_pubmed_piece("psychology", "psychology")
     if category == "nursing":
