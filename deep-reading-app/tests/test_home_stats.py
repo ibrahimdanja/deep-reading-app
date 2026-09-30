@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.storage as storage
+from app.goal import get_daily_goal
 from app.server import app
 from app.spaced_rep import ReviewState
 
@@ -59,6 +60,22 @@ def test_home_endpoint_exposes_stats(monkeypatch, tmp_path):
     payload = response.json()
     assert payload["stats"]["articles_saved"] == 1
     assert payload["stats"]["questions_answered"] == 1
+    assert payload["goal"]["completed"] == 1
     assert payload["recent"][0]["title"] == "Gamma"
 
 
+def test_daily_goal_tracks_today_reads(monkeypatch, tmp_path):
+    setup_db(monkeypatch, tmp_path)
+
+    storage.save_entry(
+        piece={"title": "Delta", "summary": "S4", "url": "https://example.com/4", "source": "arXiv"},
+        questions=["Q1"],
+        answers=["A1"],
+        review_state=ReviewState(due_date=(datetime.utcnow() + timedelta(days=1)).isoformat()),
+        category="science",
+    )
+
+    goal = get_daily_goal(goal_per_day=2)
+    assert goal["completed"] == 1
+    assert goal["remaining"] == 1
+    assert goal["percent"] == 50
