@@ -287,6 +287,29 @@ def get_recent(limit: int = 5) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def get_daily_goal(goal_per_day: int = 2) -> dict:
+    """How close the user is to a simple daily reading target."""
+    if goal_per_day <= 0:
+        goal_per_day = 1
+
+    conn = _connect()
+    today = datetime.utcnow().date().isoformat()
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM articles WHERE substr(date_saved, 1, 10) = ?",
+        (today,),
+    ).fetchone()
+    completed = row["n"] if row else 0
+    conn.close()
+
+    percent = min(100, int((completed / goal_per_day) * 100)) if goal_per_day else 100
+    return {
+        "goal": goal_per_day,
+        "completed": completed,
+        "remaining": max(0, goal_per_day - completed),
+        "percent": percent,
+    }
+
+
 def get_streak() -> int:
     """
     How many days in a row (up to and including today or yesterday) have at
@@ -391,3 +414,27 @@ def get_category_activity() -> dict:
     ).fetchall()
     conn.close()
     return {r["category"]: {"count": r["n"], "last_saved": r["last_saved"]} for r in rows}
+
+
+def get_stats() -> dict:
+    """Aggregate data for the Home screen stats cards."""
+    conn = _connect()
+    article_row = conn.execute("SELECT COUNT(*) AS c FROM articles").fetchone()
+    answer_row = conn.execute(
+        "SELECT COUNT(*) AS c FROM questions WHERE answer_text IS NOT NULL AND answer_text != ''"
+    ).fetchone()
+    due_count = len(get_due_reviews())
+    category_rows = conn.execute(
+        "SELECT category, COUNT(*) AS c FROM articles WHERE category IS NOT NULL GROUP BY category"
+    ).fetchall()
+    conn.close()
+
+    categories = {row["category"]: row["c"] for row in category_rows}
+    return {
+        "articles_saved": article_row["c"],
+        "questions_answered": answer_row["c"],
+        "reviews_due": due_count,
+        "streak": get_streak(),
+        "categories": categories,
+        "category_count": len(categories),
+    }
