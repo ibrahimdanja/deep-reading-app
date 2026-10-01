@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -24,6 +23,8 @@ from app.storage import (
     get_review_state_row,
     update_review_state,
     get_category_activity,
+    get_stats,
+    get_daily_goal,
 )
 from app.recommend import recommend
 from app.questions import get_questions
@@ -67,11 +68,27 @@ def api_get_categories():
 
 @app.get("/api/home")
 def api_get_home():
+    stats = get_stats()
+    goal = get_daily_goal()
     return {
-        "streak": get_streak(),
-        "due_count": len(get_due_reviews()),
+        "streak": stats.get("streak", 0),
+        "due_count": stats.get("reviews_due", 0),
         "recent": get_recent(5),
+        "goal": goal,
+        "stats": stats,
     }
+
+
+@app.get("/api/goal")
+def api_get_goal():
+    return get_daily_goal()
+
+
+@app.get("/api/stats")
+def api_get_stats():
+    stats = get_stats()
+    stats["goal"] = get_daily_goal()
+    return stats
 
 
 @app.get("/api/library")
