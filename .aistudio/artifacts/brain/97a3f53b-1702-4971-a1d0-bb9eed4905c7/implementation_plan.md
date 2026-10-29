@@ -1,102 +1,91 @@
-# Implementation Plan: Deep Reading Comprehensive Anti-Doomscroll Suite (Galaxy S10 Edition)
+# Implementation Plan: Deep Reading Anti-Doomscroll Suite (Samsung Galaxy A10s / Android 10 Edition)
 
-## Objective
-Transform Deep Reading into a complete, polished anti-doomscroll sanctuary optimized for the Samsung Galaxy S10 (Android 10 / One UI). The app will feature an emergency rescue breathing mode, synthesized ambient focus audio, hands-free text-to-speech narration, an expanded 14-discipline content vault with Serendipity roulette, AI Socratic critique of user answers, text highlighting & aesthetic quote-card generation, and AMOLED pure black styling with One UI ergonomic thumb zones.
-
----
-
-## 1. Core Architecture & Feature Expansions
-
-### A. Samsung Galaxy S10 & One UI Ergonomics
-- **Aspect Ratio & Layout**: Styled for 19:9 display with curved-edge safe padding (`px-4 sm:px-6`).
-- **One UI Viewing vs. Interaction Hierarchy**:
-  - Top 30% header space for clean viewing and visual breathing room.
-  - Bottom 70% interaction zone keeping buttons, controls, and inputs within comfortable one-handed thumb reach.
-- **AMOLED Pure Black Mode**: `#000000` background with high-contrast warm amber accents, designed to take full advantage of the S10 Dynamic AMOLED screen and save battery.
-- **Haptic Tactile Feedback**: Web Vibration API (`navigator.vibrate`) on SM-2 grading, card reveals, and saving.
-
-### B. Doomscroll Emergency Rescue & Focus Tools
-- **"Emergency Rescue / Breathe & Shift" Trigger**:
-  - Accessible via a prominent header button whenever the user catches themselves doomscrolling.
-  - 6-second calming animated breathing guide (Inhale, Hold, Exhale) with a grounding philosophical thought.
-  - Seamless 1-tap transition into a curated 2-minute thought piece.
-- **Ambient Focus Audio Synthesizer**:
-  - Native Web Audio API procedural sound generator (zero external streaming latency or bandwidth):
-    - *Rain on Leaves* (pink noise with low-pass filter modulation)
-    - *Warm Hearth Fire* (crackle generator)
-    - *Binaural Calm Drone* (432Hz harmonic soothing oscillator)
-    - *Quiet Library / Wind* (brown noise)
-  - Floating mini-player with volume and sound selector.
-
-### C. Text-to-Speech (TTS) Narration
-- Uses Web Speech API (`speechSynthesis`) with customized voice selection, pitch, and playback rate (0.8x, 1.0x, 1.2x, 1.5x).
-- Visual word/sentence focus indicator while playing so users can listen eyes-free while walking or relaxing.
-
-### D. Expanded Multidisciplinary Knowledge Vault (14 Subjects)
-Expand from 8 to 14 subjects:
-1. **Science** (Complex systems, quantum criticality, physics)
-2. **Philosophy & Ideas** (Epistemology, phenomenology, consciousness)
-3. **Psychology** (Cognitive biases, dual-process theory, heuristics)
-4. **Neuroscience** (Synaptic plasticity, predictive coding, default mode network)
-5. **Astronomy & Cosmos** (Exoplanet atmospheres, dark matter, stellar evolution)
-6. **Economics & Game Theory** (Nash equilibria, market design, externalities)
-7. **Tech Ethics & AI** (Alignment, automated decision systems, privacy)
-8. **Biology & Genetics** (Horizontal gene transfer, epigenetics, synthetic biology)
-9. **Sociology & Networks** (Weak ties, institutional drift, algorithmic clustering)
-10. **History** (Civilizational tipping points, printing revolution, monetary history)
-11. **Anthropology & Culture** (Kinship systems, tool invention, ritual origins)
-12. **Literature & Arts** (Narrative theory, aesthetic philosophy, semiotics)
-13. **Nursing & Clinical Practice** (Critical triage intuition, compassion resilience)
-14. **Medical Science** (Gut-brain axis, chronotherapy, cellular repair)
-- **Serendipity Roulette**: "Surprise Me" spin button that randomly picks an intriguing piece from any topic with a captivating teaser.
-
-### E. AI Socratic Critique & Dialogue
-- In addition to initial Socratic questions, users can tap **"Challenge My Thinking"** or **"Play Devil's Advocate"** after typing their answers.
-- The Gemini tutor provides constructive counter-arguments, highlights unchecked premises, and points out nuances.
-
-### F. Highlight & Aesthetic Quote Card Generator
-- Select any portion of an abstract to highlight in gold/amber.
-- One-tap "Generate Quote Card": Creates a downloadable, beautifully styled high-resolution image card with author/source attribution, paper title, and lamplight watermark for sharing or saving.
-
-### G. SM-2 Spaced Repetition & Activity Heatmap
-- GitHub/Anki-style 30-day activity matrix heatmap.
-- Long-term retention curve graph.
-- Rapid review keyboard/gesture shortcuts.
+## Device Profile: Samsung Galaxy A10s (SM-A107)
+- **Display**: 6.2" IPS LCD, 720 x 1520 pixels (19:9 aspect ratio, Infinity-V notch).
+- **OS**: Android 10 with One UI 2.0 / One UI Core.
+- **Hardware Architecture**: Octa-core MediaTek Helio P22, 2GB/3GB RAM.
+- **Design & Performance Imperatives**:
+  1. **Infinity-V Notch & Safe Insets**: Ergonomic top notch padding (`pt-safe` and `env(safe-area-inset-top)`) to ensure status bar and teardrop camera notch never obscure header text.
+  2. **High-Efficiency 60fps Lightweight Performance**: Keep CPU/memory footprint minimal for smooth transitions on 2GB RAM (lightweight state updates, zero heavy external canvas dependencies).
+  3. **One UI Core Reachability**: Viewing area in top 30%, all interactive touch targets (buttons, pills, inputs, audio controls) concentrated in the lower 70% for effortless one-handed thumb navigation.
+  4. **IPS LCD Eye Comfort Palette**: Deep Charcoal/Night theme (`#0d0f17`) with warm amber accents calibrated specifically for IPS LCD screens to eliminate backlight eye strain during late-night reading, alongside Sepia, Light, and Classic Dark.
+  5. **Haptic Touch Support**: Tactile touch confirmation (`navigator.vibrate`) tuned to the A10s vibration motor for solid tactile feedback.
 
 ---
 
-## 2. File Updates Plan
+## 1. Feature Specifications
 
-1. **`src/types.ts`**:
-   - Add new categories, ambient sound types, quote card models, critique response types.
-2. **`src/services/audioService.ts`**:
-   - Web Audio API procedural soundscapes (Rain, Fire, Binaural 432Hz, Library breeze).
-3. **`src/services/ttsService.ts`**:
-   - SpeechSynthesis manager with speed, pitch, and play/pause/stop hooks.
-4. **`src/services/hapticsService.ts`**:
-   - Safe vibration patterns for mobile Android touch events.
-5. **`src/services/contentService.ts`**:
-   - Expand to 14 categories with deep, compelling abstracts and live fallback hooks.
-6. **`src/components/EmergencyRescueModal.tsx`**:
-   - Fullscreen breathing rescue zone with calming visuals and one-tap reading jump.
-7. **`src/components/AmbientAudioPlayer.tsx`**:
-   - Compact floating audio control bar.
-8. **`src/components/QuoteCardModal.tsx`**:
-   - HTML5 Canvas/SVG quote card generator with download/copy.
-9. **`src/screens/ReadScreen.tsx`**:
-   - Integrated TTS button, Serendipity spin button, quote highlighter, and AI Argument Critique button.
-10. **`src/screens/ReviewsScreen.tsx`**:
-    - AMOLED pure black styling, haptic touches, and review streak feedback.
-11. **`src/screens/StatsScreen.tsx`**:
-    - Spaced repetition retention heatmap, daily targets, and deep reading habits.
-12. **`src/App.tsx` & `src/index.css`**:
-    - AMOLED theme palette, One UI bottom reachability rules, and state orchestration.
+### A. Doomscroll Emergency Rescue & Focus Zone
+- **One-Tap "Breathe & Shift" Mode**: Prominent emergency rescue button when caught in social media doomscrolling loops.
+- **6-Second Calming Guided Breath**: Visual circular pulse (Inhale 4s, Hold 2s, Exhale 4s) with a grounding thought, transitioning smoothly into a curated 2-minute reading piece.
+- **Synthesized Ambient Audio**: Web Audio API procedural soundscapes (Rain on leaves, Warm fire, Binaural 432Hz focus drone, Library breeze) with ultra-lightweight memory footprint and volume control.
+
+### B. Hands-Free Text-to-Speech (TTS) Narration
+- Uses native Android 10 Web Speech API (`speechSynthesis`) to read abstracts and questions aloud.
+- Variable playback speeds (0.8x, 1.0x, 1.2x, 1.5x) and active reading position indicator.
+- Designed for resting eyes while commuting or unwinding.
+
+### C. Expanded 14-Discipline Knowledge Vault & Serendipity Roulette
+- 14 rich disciplines:
+  1. **Science** (Physics, complex systems, quantum criticality)
+  2. **Philosophy & Ideas** (Epistemology, ethics, phenomenology)
+  3. **Psychology** (Cognitive illusions, heuristics, attention restoration)
+  4. **Neuroscience** (Synaptic plasticity, predictive processing, default mode network)
+  5. **Astronomy & Cosmos** (Exoplanets, gravitational waves, stellar evolution)
+  6. **Economics & Game Theory** (Nash equilibria, collective action, mechanism design)
+  7. **Tech Ethics & AI** (Algorithmic bias, alignment, data sovereignty)
+  8. **Biology & Genetics** (Horizontal gene transfer, epigenetics, evolutionary dynamics)
+  9. **Sociology & Networks** (Weak ties, institutional drift, social mobility)
+  10. **History** (Civilizational collapse, printing press, monetary revolutions via Wikipedia On This Day)
+  11. **Anthropology & Culture** (Tool transmission, ritual origins, symbolic cognition)
+  12. **Literature & Arts** (Narrative theory, aesthetic philosophy, critical semiotics)
+  13. **Nursing Science** (Clinical intuition, patient safety, compassion resilience)
+  14. **Medical Science** (Gut-brain axis, chronobiology, systemic pharmacology)
+- **Serendipity Roulette ("Surprise Me")**: Spin button that selects a random intriguing discovery piece with a curiosity teaser.
+
+### D. AI Socratic Dialogue & "Challenge My Thinking"
+- 3 Socratic follow-up questions generated by Gemini API (or curated Socratic fallbacks).
+- Reflection inputs where users record their counter-arguments or thoughts.
+- **"Challenge My Thinking" (Devil's Advocate)**: Tap to have the Gemini Socratic tutor constructively challenge your argument, exposing edge cases and assumptions.
+
+### E. Quote Highlighter & Aesthetic Card Generator
+- Select and highlight key excerpts within any abstract.
+- Generates a styled, shareable quote card with clean typography, paper title, and source citation.
+
+### F. SM-2 Spaced Repetition & Activity Tracker
+- Anki-style SM-2 scheduler (`Again`, `Hard`, `Good`, `Easy`).
+- Activity matrix heatmap tracking daily reading habits.
+- Local persistence in localStorage with JSON export for full data portability.
 
 ---
 
-## 3. Verification Plan
+## 2. File Implementation Roadmap
 
-1. Run `compile_applet` to ensure zero TypeScript errors or compilation issues.
-2. Verify all Web Audio API nodes synthesize sound without external network dependency.
-3. Verify SpeechSynthesis handles speech events cleanly across mobile browsers.
-4. Test SM-2 review transitions, database persistence, and emergency rescue flows.
+| File | Purpose & Changes |
+|---|---|
+| `src/types.ts` | 14 discipline keys, ambient soundscapes, TTS states, quote models |
+| `src/services/audioService.ts` | Ultra-efficient Web Audio API procedural sound engine |
+| `src/services/ttsService.ts` | Web Speech API speech controller with speed & pause/play |
+| `src/services/hapticsService.ts` | Safe vibration helper for Android 10 touch feedback |
+| `src/services/contentService.ts` | Expanded 14-category article vault and live Wikipedia/PubMed loaders |
+| `src/services/questionsService.ts` | Gemini Socratic questions & "Challenge My Thinking" argument critique |
+| `src/components/EmergencyRescueModal.tsx` | Galaxy A10s notch-safe full-screen guided breathing & doomscroll reset |
+| `src/components/AmbientAudioPlayer.tsx` | Compact, non-intrusive floating soundscape bar |
+| `src/components/QuoteCardModal.tsx` | Quote card generator with download/copy capability |
+| `src/components/Navigation.tsx` | One UI bottom navigation thumb bar with review badges |
+| `src/components/Header.tsx` | Infinity-V safe header with streak, rescue button, and reader settings |
+| `src/screens/HomeScreen.tsx` | Daily goal meter, Serendipity spin, recommendation, and recent pieces |
+| `src/screens/ReadScreen.tsx` | Reading viewer with TTS audio player, highlightable text, and AI critique |
+| `src/screens/ReviewsScreen.tsx` | Spaced recall card testing with SM-2 grading buttons |
+| `src/screens/LibraryScreen.tsx` | Full-text search and category filtering across all 14 subjects |
+| `src/screens/StatsScreen.tsx` | Habit heatmap, daily target adjustment, and JSON backup |
+| `src/App.tsx` & `src/index.css` | Theme tokens (Deep Night, Sepia, Dark, Light) and One UI layout |
+
+---
+
+## 3. Verification & Testing
+
+1. Validate compilation via `compile_applet`.
+2. Verify audio synthesizer runs with low CPU usage and zero memory leaks.
+3. Ensure layout fits 720x1520 viewport and scales responsively for Samsung Galaxy A10s.
+4. Verify all features work offline with graceful online enhancement.
