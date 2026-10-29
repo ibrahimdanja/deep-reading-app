@@ -1,9 +1,25 @@
 @import "tailwindcss";
 
 :root {
+  /* Default Night Mode - Calibrated specifically for Samsung Galaxy A10s IPS LCD */
+  --bg: #0d0f17;
+  --panel: #141724;
+  --panel-elevated: #1d2133;
+  --text: #eef1f8;
+  --muted: #868d9f;
+  --amber: #e3a04f;
+  --amber-dim: #e3a04f28;
+  --sage: #7fb69e;
+  --hairline: #ffffff12;
+  --glow: #e3a05520;
+  --text-soft: #d8dce8;
+  --text-mid: #c5cad6;
+}
+
+[data-theme="dark"] {
   --bg: #12141f;
   --panel: #1b1e2c;
-  --panel-elevated: #222638;
+  --panel-elevated: #24283b;
   --text: #eef0f5;
   --muted: #8a90a6;
   --amber: #e3a04f;
@@ -13,21 +29,6 @@
   --glow: #e3a05522;
   --text-soft: #dcdfe8;
   --text-mid: #c9cdd8;
-}
-
-[data-theme="light"] {
-  --bg: #f6f7fb;
-  --panel: #ffffff;
-  --panel-elevated: #edf0f7;
-  --text: #1b1f2a;
-  --muted: #667085;
-  --amber: #b86708;
-  --amber-dim: #b8670826;
-  --sage: #2f7a5a;
-  --hairline: #00000018;
-  --glow: #b8670815;
-  --text-soft: #2b3140;
-  --text-mid: #3d4455;
 }
 
 [data-theme="sepia"] {
@@ -45,12 +46,29 @@
   --text-mid: #d2c4b0;
 }
 
+[data-theme="light"] {
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --panel-elevated: #edf0f7;
+  --text: #1b1f2a;
+  --muted: #667085;
+  --amber: #b86708;
+  --amber-dim: #b8670826;
+  --sage: #2f7a5a;
+  --hairline: #00000018;
+  --glow: #b8670815;
+  --text-soft: #2b3140;
+  --text-mid: #3d4455;
+}
+
 body {
   background-color: var(--bg);
   color: var(--text);
   font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .font-serif-reading {
@@ -61,10 +79,19 @@ body {
   font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Custom scrollbars */
+/* Infinity-V notch and gesture bar safe-area helpers */
+.pt-safe {
+  padding-top: max(8px, env(safe-area-inset-top));
+}
+
+.pb-safe {
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+/* Custom minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -72,7 +99,4 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--hairline);
   border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
 }

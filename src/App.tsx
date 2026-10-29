@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Navigation, NavTab } from './components/Navigation';
 import { ReaderSettingsDialog } from './components/ReaderSettingsDialog';
+import { EmergencyRescueModal } from './components/EmergencyRescueModal';
+import { AmbientAudioPlayer } from './components/AmbientAudioPlayer';
+import { QuoteCardModal } from './components/QuoteCardModal';
 import { HomeScreen } from './screens/HomeScreen';
 import { ReadScreen } from './screens/ReadScreen';
 import { LibraryScreen } from './screens/LibraryScreen';
@@ -12,7 +15,8 @@ import {
   Article,
   AppStats,
   Recommendation,
-  ReaderSettings
+  ReaderSettings,
+  QuoteCardData
 } from './types';
 import {
   getAppStats,
@@ -23,13 +27,19 @@ import {
   saveReaderSettings
 } from './services/storageService';
 import { recommendSubject } from './services/recommendation';
+import { lightHaptic } from './services/hapticsService';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [readCategory, setReadCategory] = useState<CategoryKey>('science');
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
+  // Modals
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isRescueOpen, setIsRescueOpen] = useState<boolean>(false);
+  const [quoteCardData, setQuoteCardData] = useState<QuoteCardData | null>(null);
+
+  // State
   const [settings, setSettings] = useState<ReaderSettings>(() => getReaderSettings());
   const [stats, setStats] = useState<AppStats>(() => getAppStats());
   const [articles, setArticles] = useState<Article[]>(() => loadAllArticles());
@@ -38,12 +48,10 @@ export const App: React.FC = () => {
     recommendSubject(getCategoryActivity(), stats.reviews_due)
   );
 
-  // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
   }, [settings.theme]);
 
-  // Refresh data whenever articles change or screen actions complete
   const refreshAppData = () => {
     const updatedStats = getAppStats();
     const all = loadAllArticles();
@@ -72,17 +80,18 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--text)] transition-colors selection:bg-[var(--amber-dim)] selection:text-[var(--amber)]">
-      {/* Top Header */}
+      {/* Top Header calibrated for Samsung Galaxy A10s Infinity-V notch */}
       <Header
         streak={stats.streak}
         dueCount={stats.reviews_due}
         settings={settings}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onNavigateReviews={() => setActiveTab('reviews')}
+        onTriggerRescue={() => setIsRescueOpen(true)}
       />
 
-      {/* Main Container */}
-      <main className="flex-1 w-full max-w-2xl mx-auto px-4 pt-4 sm:pt-6">
+      {/* Main Container - max-w-md optimal for Galaxy A10s 720px width viewport */}
+      <main className="flex-1 w-full max-w-md mx-auto px-3.5 pt-3">
         {activeTab === 'home' && (
           <HomeScreen
             stats={stats}
@@ -92,6 +101,7 @@ export const App: React.FC = () => {
             onNavigateReviews={() => setActiveTab('reviews')}
             onOpenArticle={handleOpenArticle}
             onNavigateLibrary={() => setActiveTab('library')}
+            onTriggerRescue={() => setIsRescueOpen(true)}
           />
         )}
 
@@ -101,6 +111,7 @@ export const App: React.FC = () => {
             settings={settings}
             onSaved={refreshAppData}
             onNavigateHome={() => setActiveTab('home')}
+            onOpenQuoteCard={data => setQuoteCardData(data)}
           />
         )}
 
@@ -109,6 +120,7 @@ export const App: React.FC = () => {
             articles={articles}
             onStartReading={handleStartReading}
             selectedArticleId={selectedArticleId}
+            onOpenQuoteCard={data => setQuoteCardData(data)}
           />
         )}
 
@@ -127,22 +139,39 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Ambient Audio Floating Mini-Player */}
+      <AmbientAudioPlayer />
+
+      {/* Samsung One UI Bottom Thumb Navigation */}
       <Navigation
         activeTab={activeTab}
         onTabChange={tab => {
+          lightHaptic();
           setSelectedArticleId(null);
           setActiveTab(tab);
         }}
         dueCount={stats.reviews_due}
       />
 
-      {/* Reader Settings Modal */}
+      {/* Emergency Rescue Breath Modal */}
+      <EmergencyRescueModal
+        isOpen={isRescueOpen}
+        onClose={() => setIsRescueOpen(false)}
+        onLaunchReading={cat => handleStartReading(cat)}
+      />
+
+      {/* Reader Appearance & Display Settings Modal */}
       <ReaderSettingsDialog
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
+      />
+
+      {/* Aesthetic Quote Card Generator Modal */}
+      <QuoteCardModal
+        data={quoteCardData}
+        onClose={() => setQuoteCardData(null)}
       />
     </div>
   );

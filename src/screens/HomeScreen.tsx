@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Compass,
   Sparkles,
   Flame,
-  BookOpen,
-  ArrowRight,
   Target,
-  CheckCircle2,
-  Clock
+  ArrowRight,
+  Clock,
+  Dices,
+  HeartHandshake
 } from 'lucide-react';
 import { AppStats, Article, CategoryKey, CATEGORIES, Recommendation } from '../types';
+import { getRandomSerendipityCategory } from '../services/contentService';
+import { lightHaptic, mediumHaptic } from '../services/hapticsService';
 
 interface HomeScreenProps {
   stats: AppStats;
@@ -19,6 +21,7 @@ interface HomeScreenProps {
   onNavigateReviews: () => void;
   onOpenArticle: (article: Article) => void;
   onNavigateLibrary: () => void;
+  onTriggerRescue: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -28,46 +31,83 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onStartReading,
   onNavigateReviews,
   onOpenArticle,
-  onNavigateLibrary
+  onNavigateLibrary,
+  onTriggerRescue
 }) => {
+  const [spinning, setSpinning] = useState(false);
   const goal = stats.goal;
 
+  const handleSerendipitySpin = () => {
+    lightHaptic();
+    setSpinning(true);
+    setTimeout(() => {
+      mediumHaptic();
+      setSpinning(false);
+      const picked = getRandomSerendipityCategory();
+      onStartReading(picked);
+    }, 600);
+  };
+
   return (
-    <div className="space-y-6 pb-24 animate-in fade-in duration-200">
-      {/* Hero Greeting */}
-      <section className="pt-2">
-        <h2 className="text-2xl sm:text-3xl font-serif-reading font-semibold text-[var(--text)] tracking-tight leading-snug">
-          Thoughtful reading, <br className="hidden sm:inline" />
-          <span className="text-[var(--amber)]">remembered deeply.</span>
+    <div className="space-y-5 pb-28 animate-in fade-in duration-150">
+      {/* One UI Top Viewing Zone: Gentle Heading */}
+      <section className="pt-1">
+        <h2 className="text-xl sm:text-2xl font-serif-reading font-semibold text-[var(--text)] tracking-tight leading-snug">
+          Break the infinite scroll. <br />
+          <span className="text-[var(--amber)]">Train your deep attention.</span>
         </h2>
-        <p className="text-sm text-[var(--muted)] mt-1.5 leading-relaxed">
-          Short science, philosophy, and history abstracts paired with Socratic reflection and SM-2 spaced repetition.
+        <p className="text-xs text-[var(--muted)] mt-1 leading-relaxed">
+          Short peer-reviewed abstracts across 14 disciplines paired with Socratic reflection and SM-2 active recall.
         </p>
       </section>
 
-      {/* Daily Goal Card */}
-      <section className="bg-[var(--panel)] border border-[var(--hairline)] rounded-2xl p-4 sm:p-5 shadow-sm relative overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
+      {/* Emergency Rescue Card */}
+      <section className="bg-gradient-to-r from-[var(--amber-dim)]/40 to-[var(--panel)] border border-[var(--amber)]/30 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
+        <div className="space-y-0.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--amber)] flex items-center gap-1">
+            <HeartHandshake className="w-3.5 h-3.5" />
+            <span>Doomscroll Interceptor</span>
+          </span>
+          <h4 className="text-xs sm:text-sm font-semibold text-[var(--text)]">
+            Feeling stuck in a scroll loop?
+          </h4>
+          <p className="text-[11px] text-[var(--muted)]">
+            Take a 10s guided breath to reset cognitive inertia.
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            mediumHaptic();
+            onTriggerRescue();
+          }}
+          className="px-3.5 py-2 rounded-xl bg-[var(--amber)] text-black font-bold text-xs hover:opacity-90 transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap shadow"
+        >
+          <span>Rescue Me</span>
+        </button>
+      </section>
+
+      {/* Daily Target Progress */}
+      <section className="bg-[var(--panel)] border border-[var(--hairline)] rounded-2xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-[var(--amber-dim)] text-[var(--amber)]">
-              <Target className="w-4 h-4" />
+            <div className="p-1 rounded-lg bg-[var(--amber-dim)] text-[var(--amber)]">
+              <Target className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[var(--text)]">Daily Reading Target</h3>
-              <p className="text-xs text-[var(--muted)]">
+              <h3 className="text-xs font-bold text-[var(--text)]">Daily Reading Target</h3>
+              <p className="text-[11px] text-[var(--muted)]">
                 {goal.completed >= goal.goal
-                  ? 'Daily goal reached! Keep exploring or review.'
-                  : `${goal.remaining} more piece${goal.remaining > 1 ? 's' : ''} to complete today`}
+                  ? 'Target accomplished for today!'
+                  : `${goal.remaining} more piece${goal.remaining > 1 ? 's' : ''} to complete`}
               </p>
             </div>
           </div>
-          <span className="text-base font-bold font-serif-reading text-[var(--amber)]">
+          <span className="text-sm font-bold font-serif-reading text-[var(--amber)]">
             {goal.completed}/{goal.goal}
           </span>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full bg-[var(--bg)] h-2.5 rounded-full overflow-hidden border border-[var(--hairline)]">
+        <div className="w-full bg-[var(--bg)] h-2 rounded-full overflow-hidden border border-[var(--hairline)]">
           <div
             className="h-full bg-gradient-to-r from-[var(--amber)] to-[var(--sage)] rounded-full transition-all duration-500"
             style={{ width: `${goal.percent}%` }}
@@ -75,128 +115,162 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </section>
 
-      {/* Spaced Repetition Due Alert (if any reviews due) */}
+      {/* Spaced Recall Due Callout */}
       {stats.reviews_due > 0 && (
-        <section className="bg-gradient-to-r from-[var(--panel)] to-[var(--panel-elevated)] border-l-4 border-l-[var(--amber)] border-y border-r border-[var(--hairline)] rounded-2xl p-4 sm:p-5 shadow-md flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--amber)]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Spaced Repetition Active</span>
+        <section className="bg-[var(--panel-elevated)] border-l-4 border-l-[var(--amber)] border-y border-r border-[var(--hairline)] rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--amber)]">
+              <Sparkles className="w-3 h-3" />
+              <span>Active SM-2 Recall Queue</span>
             </div>
-            <h4 className="text-sm sm:text-base font-semibold text-[var(--text)]">
-              {stats.reviews_due} article{stats.reviews_due > 1 ? 's' : ''} due for recall
+            <h4 className="text-xs sm:text-sm font-semibold text-[var(--text)]">
+              {stats.reviews_due} article{stats.reviews_due > 1 ? 's' : ''} due for review
             </h4>
-            <p className="text-xs text-[var(--muted)]">
-              Review your Socratic answers to lock concepts into long-term memory.
+            <p className="text-[11px] text-[var(--muted)]">
+              Reinforce synapses before neural memory fades.
             </p>
           </div>
           <button
-            onClick={onNavigateReviews}
-            className="whitespace-nowrap px-4 py-2.5 rounded-xl bg-[var(--amber)] text-black font-semibold text-xs hover:opacity-90 transition-all flex items-center gap-1 cursor-pointer shadow"
+            onClick={() => {
+              mediumHaptic();
+              onNavigateReviews();
+            }}
+            className="px-3.5 py-2 rounded-xl bg-[var(--amber)] text-black font-bold text-xs hover:opacity-90 transition-all cursor-pointer whitespace-nowrap shadow"
           >
             Review Now
-            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </section>
       )}
 
-      {/* Suggested Subject Recommendation (Picks ONE subject to read next) */}
-      <section className="bg-[var(--panel)] border border-[var(--hairline)] rounded-2xl p-5 relative overflow-hidden">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] flex items-center gap-1.5">
-            <Compass className="w-3.5 h-3.5 text-[var(--amber)]" />
-            <span>Recommended Reading</span>
-          </div>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--amber-dim)] text-[var(--amber)] border border-[var(--amber-dim)]">
-            {recommendation.label}
-          </span>
-        </div>
-
-        <p className="text-sm text-[var(--text-soft)] italic mb-4 font-serif-reading">
-          "{recommendation.reason}"
-        </p>
-
+      {/* One UI Bottom Thumb Interactive Zone: Serendipity Roulette & Recommended Read */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Serendipity Roulette Button */}
         <button
-          onClick={() => onStartReading(recommendation.category)}
-          className="w-full py-3 px-4 rounded-xl bg-[var(--amber)] text-black font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+          onClick={handleSerendipitySpin}
+          disabled={spinning}
+          className="bg-[var(--panel)] border border-[var(--hairline)] hover:border-[var(--amber)]/40 rounded-2xl p-3.5 text-left transition-all cursor-pointer group flex flex-col justify-between"
         >
-          <span>Read {recommendation.label} Piece</span>
-          <ArrowRight className="w-4 h-4" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-1.5 rounded-lg bg-[var(--amber-dim)] text-[var(--amber)]">
+              <Dices className={`w-4 h-4 ${spinning ? 'animate-spin' : ''}`} />
+            </div>
+            <span className="text-[10px] uppercase font-bold text-[var(--amber)] tracking-wider">
+              Random
+            </span>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--amber)] transition-colors">
+              Surprise Me
+            </h4>
+            <p className="text-[10px] text-[var(--muted)]">Spin across 14 subjects</p>
+          </div>
         </button>
-      </section>
 
-      {/* Key Metric Blocks */}
-      <section className="grid grid-cols-3 gap-2.5">
-        <div className="bg-[var(--panel)] border border-[var(--hairline)] rounded-xl p-3 text-center">
+        {/* Recommended Subject Card */}
+        <button
+          onClick={() => {
+            lightHaptic();
+            onStartReading(recommendation.category);
+          }}
+          className="bg-[var(--panel)] border border-[var(--hairline)] hover:border-[var(--amber)]/40 rounded-2xl p-3.5 text-left transition-all cursor-pointer group flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-1.5 rounded-lg bg-[var(--sage)]/15 text-[var(--sage)]">
+              <Compass className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] uppercase font-bold text-[var(--sage)] tracking-wider">
+              Nudge
+            </span>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--amber)] transition-colors line-clamp-1">
+              {recommendation.label}
+            </h4>
+            <p className="text-[10px] text-[var(--muted)] line-clamp-1">
+              {recommendation.reason}
+            </p>
+          </div>
+        </button>
+      </div>
+
+      {/* Quick Metrics */}
+      <section className="grid grid-cols-3 gap-2">
+        <div className="bg-[var(--panel)] border border-[var(--hairline)] rounded-xl p-2.5 text-center">
           <div className="flex items-center justify-center gap-1 text-[var(--amber)] mb-0.5">
             <Flame className="w-3.5 h-3.5" />
-            <span className="text-xl font-bold font-serif-reading">{stats.streak}</span>
+            <span className="text-lg font-bold font-serif-reading">{stats.streak}</span>
           </div>
-          <p className="text-[11px] text-[var(--muted)]">Day Streak</p>
+          <p className="text-[10px] text-[var(--muted)] font-medium">Day Streak</p>
         </div>
 
-        <div className="bg-[var(--panel)] border border-[var(--hairline)] rounded-xl p-3 text-center">
-          <div className="text-xl font-bold font-serif-reading text-[var(--text)] mb-0.5">
+        <div className="bg-[var(--panel)] border border-[var(--hairline)] rounded-xl p-2.5 text-center">
+          <div className="text-lg font-bold font-serif-reading text-[var(--text)] mb-0.5">
             {stats.articles_saved}
           </div>
-          <p className="text-[11px] text-[var(--muted)]">Saved Pieces</p>
+          <p className="text-[10px] text-[var(--muted)] font-medium">Saved Reads</p>
         </div>
 
-        <div className="bg-[var(--panel)] border border-[var(--hairline)] rounded-xl p-3 text-center">
-          <div className="text-xl font-bold font-serif-reading text-[var(--sage)] mb-0.5">
+        <div className="bg-[var(--panel)] border border-[var(--hairline)] rounded-xl p-2.5 text-center">
+          <div className="text-lg font-bold font-serif-reading text-[var(--sage)] mb-0.5">
             {stats.questions_answered}
           </div>
-          <p className="text-[11px] text-[var(--muted)]">Reflections</p>
+          <p className="text-[10px] text-[var(--muted)] font-medium">Reflections</p>
         </div>
       </section>
 
-      {/* Recent Activity */}
-      <section className="space-y-3">
+      {/* Recent Activity List */}
+      <section className="space-y-2.5">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
             Recent Readings
           </h3>
           <button
-            onClick={onNavigateLibrary}
-            className="text-xs text-[var(--amber)] font-medium hover:underline flex items-center gap-0.5 cursor-pointer"
+            onClick={() => {
+              lightHaptic();
+              onNavigateLibrary();
+            }}
+            className="text-[11px] text-[var(--amber)] font-medium hover:underline cursor-pointer"
           >
-            View all ({stats.articles_saved})
+            Library ({stats.articles_saved})
           </button>
         </div>
 
         {recentArticles.length === 0 ? (
-          <div className="text-center py-8 px-4 bg-[var(--panel)] border border-[var(--hairline)] rounded-2xl text-[var(--muted)] text-sm">
-            No readings saved yet. Tap recommended reading above to begin!
+          <div className="text-center py-6 bg-[var(--panel)] border border-[var(--hairline)] rounded-2xl text-[var(--muted)] text-xs">
+            No readings saved yet. Tap "Surprise Me" or the suggested subject above to start!
           </div>
         ) : (
           <div className="space-y-2">
-            {recentArticles.slice(0, 4).map(art => (
+            {recentArticles.slice(0, 3).map(art => (
               <div
                 key={art.id}
-                onClick={() => onOpenArticle(art)}
-                className="bg-[var(--panel)] border border-[var(--hairline)] hover:border-[var(--amber)]/40 rounded-xl p-3.5 transition-all cursor-pointer group flex items-start justify-between gap-3"
+                onClick={() => {
+                  lightHaptic();
+                  onOpenArticle(art);
+                }}
+                className="bg-[var(--panel)] border border-[var(--hairline)] hover:border-[var(--amber)]/40 rounded-xl p-3 transition-all cursor-pointer group flex items-start justify-between gap-2.5"
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[var(--bg)] text-[var(--amber)]">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[var(--bg)] text-[var(--amber)]">
                       {CATEGORIES[art.category] || art.category}
                     </span>
-                    <span className="text-[11px] text-[var(--muted)] flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
+                    <span className="text-[10px] text-[var(--muted)] flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" />
                       {new Date(art.date_saved).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric'
                       })}
                     </span>
                   </div>
-                  <h4 className="text-sm font-semibold font-serif-reading text-[var(--text)] group-hover:text-[var(--amber)] transition-colors line-clamp-1">
+                  <h4 className="text-xs font-semibold font-serif-reading text-[var(--text)] group-hover:text-[var(--amber)] transition-colors line-clamp-1">
                     {art.title}
                   </h4>
-                  <p className="text-xs text-[var(--muted)] line-clamp-1">
+                  <p className="text-[10px] text-[var(--muted)] line-clamp-1">
                     {art.source}
                   </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-[var(--muted)] group-hover:text-[var(--amber)] group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1" />
+                <ArrowRight className="w-3.5 h-3.5 text-[var(--muted)] group-hover:text-[var(--amber)] flex-shrink-0 mt-1" />
               </div>
             ))}
           </div>

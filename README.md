@@ -1,37 +1,55 @@
-# Deep Reading
+# Deep Reading — Anti-Doomscroll Suite (Samsung Galaxy A10s / Android 10 Edition)
 
-A personal reading application that replaces mindless scrolling with short, substantive science and philosophy abstracts paired with Socratic follow-up questions and SM-2 spaced repetition to make critical thinking stick.
+A personal reading application and anti-doomscroll sanctuary that replaces mindless social media scrolling with short, substantive abstracts paired with Socratic reflection and SM-2 spaced repetition to build long-term intellectual scaffolding.
 
-## Features
+Specially calibrated for the **Samsung Galaxy A10s (Android 10 / One UI Core)** with 19:9 viewport ratio, Infinity-V teardrop notch safety, low CPU/RAM footprint, and an IPS LCD Deep Night comfort theme.
 
-- **Multidisciplinary Curated & Live Content**: Pulls and curates high-signal abstracts across 8 disciplines:
-  - **Science**: Complex systems, physics, and neural networks (arXiv)
-  - **Philosophy & Ideas**: Epistemology, ethics, and consciousness (Aeon / Stanford Encyclopedia)
-  - **Psychology**: Cognitive illusions, attention restoration, and heuristics (PubMed)
-  - **Nursing**: Clinical pattern recognition and compassion fatigue (PubMed)
-  - **Biology**: Horizontal gene transfer and epigenetics (PubMed)
-  - **Sociology**: Network topology, weak ties, and institutional drift (PubMed)
-  - **History**: Civilizational tipping points and revolutions (Wikipedia On This Day API)
-  - **Medical**: Microbiome-brain axis and chronotherapy (PubMed)
+---
 
-- **Socratic Thinking Questions**:
-  - Rather than basic comprehension checks, questions challenge the reader to evaluate counter-arguments, identify hidden assumptions, and test generalization limits.
-  - Generates custom questions via the Gemini API when available, and includes a rich collection of Socratic thinking prompts for offline and fallback use.
+## Key Features
 
-- **SM-2 Spaced Repetition**:
-  - Every saved reading is scheduled for active recall using the SM-2 algorithm (Again, Hard, Good, Easy).
-  - Prompts recall before revealing your original notes, locking concepts into permanent memory.
+### 1. Emergency Doomscroll Rescue & Focus Zone
+- **One-Tap Rescue ("Breathe & Shift")**: Instantly break infinite scroll loops with a guided 10-second rhythmic breath (Inhale 4s, Hold 2s, Exhale 4s) accompanied by tactile haptic pulses and a grounding thought.
+- **Immediate Reading Transition**: Smoothly jumps from calming breathwork into an engaging 2-minute short read.
+- **Synthesized Ambient Audio**: Native Web Audio API procedural soundscapes (Rain on leaves, Warm fire, Binaural 432Hz calming drone, Quiet library breeze) with volume control and zero streaming data overhead.
 
-- **Daily Reading Goal & Streaks**:
-  - Track your daily reading target (customizable from 1 to 5 pieces).
-  - Day-by-day streak counter and subject breadth distribution analytics.
+### 2. Hands-Free Text-to-Speech (TTS) Narration
+- Uses native Android 10 Web Speech API to read abstracts and Socratic questions aloud.
+- Adjustable playback rates (0.8x, 1.0x, 1.2x, 1.5x) and play/pause controls for screen-free reflection while commuting or relaxing.
 
-- **Smart Subject Recommendation**:
-  - Deliberately suggests ONE subject to read next based on which disciplines you haven't visited recently.
+### 3. Expanded 14-Discipline Knowledge Vault & Serendipity Roulette
+- Diverse multidisciplinary curation across 14 fields:
+  1. **Science & Physics** (Criticality, quantum systems, active matter)
+  2. **Philosophy & Ideas** (Epistemology, intergenerational ethics, qualia)
+  3. **Psychology & Mind** (Cognitive illusions, heuristics, attention restoration)
+  4. **Neuroscience** (Bayesian predictive coding, default mode network)
+  5. **Astronomy & Cosmos** (Exoplanet biosignatures, gravitational wave sirens)
+  6. **Economics & Game Theory** (Algorithmic commons, information cascades)
+  7. **Tech Ethics & AI** (Corrigibility, alignment, algorithmic monoculture)
+  8. **Biology & Genetics** (Horizontal gene transfer, transgenerational epigenetics)
+  9. **Sociology & Networks** (Weak ties, institutional drift, algorithmic homophily)
+  10. **Historical Turning Points** (Bronze Age collapse, printing press, Wikipedia On This Day)
+  11. **Anthropology & Culture** (Dunbar's number, cultural ratchet effect)
+  12. **Literature & Aesthetics** (Paradox of fiction, narrative transportation)
+  13. **Nursing & Clinical Care** (Intuitive triage recognition, moral distress mitigations)
+  14. **Medical Science** (Microbiome-gut-brain axis, circadian chronotherapy)
+- **Serendipity Roulette ("Surprise Me")**: Spin across all 14 subjects for random intellectual discovery.
 
-- **Lamplight & Android Material 3 Reader Experience**:
-  - Reader appearance options: Dark, Warm Sepia, and Light themes.
-  - Adjustable text size (A- to A++) and typography toggle (Book Serif vs Modern Sans).
-  - Android Material 3 bottom navigation with due-review notification badges.
-  - Full local persistence via localStorage.
-  - JSON data export for backup.
+### 4. Interactive Socratic Dialogue & "Challenge My Thinking"
+- 3 Socratic follow-up questions generated by Gemini API (or intelligent fallback prompts).
+- Reflection inputs to record arguments and critiques.
+- **"Challenge My Thinking" (Devil's Advocate)**: Gemini evaluates your written reflection, exposes hidden assumptions, and poses an incisive devil's advocate inquiry.
+
+### 5. Highlight & Aesthetic Quote Card Generator
+- Select any portion of an abstract to highlight.
+- Generates a beautifully styled, shareable graphic card with paper title, source attribution, and one-click PNG download or text copy.
+
+### 6. SM-2 Spaced Repetition & 28-Day Habit Matrix
+- Full SM-2 scheduler (`Again`, `Hard`, `Good`, `Easy`) with active recall review prompts.
+- 28-day habit matrix heatmap tracking your reading consistency.
+- Customizable daily reading targets (1 to 5 pieces/day) and full JSON library export.
+
+### 7. Samsung Galaxy A10s & One UI Ergonomics
+- **One UI Viewing & Thumb Zones**: Top viewing margin with bottom-weighted touch targets for comfortable one-handed navigation.
+- **IPS LCD Deep Night Palette**: Calibrated `#0d0f17` warm charcoal theme to eliminate backlight eye fatigue during night reading, alongside Sepia, Dark, and Light themes.
+- **Haptic Tactile Feedback**: Subtle physical vibration pulses on button presses and SM-2 grades.
